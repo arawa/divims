@@ -1,0 +1,43 @@
+#!/bin/bash
+###
+## Generate ini file with server's data
+###
+
+## retrieve load averages
+echo "load_averages="$(cat /proc/loadavg)
+
+## retrieve uptime in seconds
+echo "uptime="$(cut -d' ' -f1 /proc/uptime)
+
+## Retrieve number of cpus
+echo "cpu_count="$(cat /proc/cpuinfo | grep  '^processor' | wc -l)
+
+## Retrieve network usage statistics
+## See https://superuser.com/questions/356907/how-to-get-real-time-network-statistics-in-linux-with-kb-mb-bytes-format-and-for
+INTERVAL=0.1  # update interval in seconds
+#IF=$(ip -4 -brief addr show | grep $(scw-metadata PRIVATE_IP) | cut -d' ' -f1)
+IF=$(ip -4 -brief addr show | grep " 10\." | cut -d' ' -f1)
+R1=$(cat /sys/class/net/$IF/statistics/rx_bytes)
+T1=$(cat /sys/class/net/$IF/statistics/tx_bytes)
+sleep $INTERVAL
+R2=`cat /sys/class/net/$IF/statistics/rx_bytes`
+T2=`cat /sys/class/net/$IF/statistics/tx_bytes`
+TMbps=$(echo "scale=6; (((($T2-$T1)*8)/$INTERVAL)/1024)/1024" | bc)
+RMbps=$(echo "scale=6; (((($R2-$R1)*8)/$INTERVAL)/1024)/1024" | bc)
+#echo "TX $1: $TKBPS Mb/s RX $1: $RKBPS Mb/s"
+echo "rx_avg1="$RMbps
+echo "tx_avg1="$TMbps
+
+## Retrieve internal ipv4
+echo "internal_ipv4="$(ip -brief -4 address show dev $IF scope global | awk '{print $3}' | awk -F'/' '{print $1}')
+## Retrieve external ipv4
+echo "external_ipv4="$(ip -brief -4 address show dev lo scope global | awk '{print $3}' | awk -F'/' '{print $1}')
+## Retrieve external ipv6
+echo "external_ipv6="$(ip -brief -6 address show dev $IF scope global | awk '{print $3}' | awk -F'/' '{print $1}')
+## retrieve short hostname
+echo "hostname="$(hostname -s)
+
+# BBB infos
+## Status
+bbb-conf --status | grep -q -E "inactive|failed"
+echo "bbb_status="$([ $? -eq 0 ] && echo KO || echo OK)

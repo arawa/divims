@@ -1,0 +1,12 @@
+account default
+host mail.example.com
+port 465
+tls on
+tls_starttls on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+tls_certcheck on
+auth on
+user user@example.com
+password "mysuperpassword"
+from "user@example.com"
+logfile /app/tmp/msmtp.log

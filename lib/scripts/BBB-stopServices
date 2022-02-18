@@ -1,0 +1,4 @@
+#!/bin/bash
+
+bbb-conf --stop
+service bbb-exporter stop

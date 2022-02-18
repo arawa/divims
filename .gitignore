@@ -1,0 +1,7 @@
+Divim-S.code-workspace
+tmp/
+cache/
+log/
+/run/main.php
+msmtprc
+config/project/

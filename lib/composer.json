@@ -1,0 +1,9 @@
+{
+    "require": {
+        "ovh/ovh": "^2.0",
+        "sabre/vobject": "~4.1",
+        "monolog/monolog": "^2.1",
+        "bigbluebutton/bigbluebutton-api-php": "^2.0",
+        "confirm-it-solutions/php-zabbix-api": "^2.4"
+    }
+}
