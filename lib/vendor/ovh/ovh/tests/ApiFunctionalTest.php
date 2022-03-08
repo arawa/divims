@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2013-2016, OVH SAS.
+# Copyright (c) 2013-2017, OVH SAS.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -249,5 +249,14 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
     public function testApiGetWithQueryString()
     {
         $this->api->get('/me/api/credential', ['status' => 'pendingValidation']);
+    }
+
+    /**
+     * Test APi::get without authentication
+     */
+    public function testApiGetWithoutAuthentication()
+    {
+        $api = new Api(NULL,NULL, $this->endpoint, null, $this->client);
+        $api->get('/hosting/web/moduleList',null,null,false);
     }
 }

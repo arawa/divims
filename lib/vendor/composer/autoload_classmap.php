@@ -7,7 +7,4 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'Normalizer' => $vendorDir . '/symfony/polyfill-intl-normalizer/Resources/stubs/Normalizer.php',
-    'ZabbixApi\\Exception' => $vendorDir . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApiAbstract.class.php',
-    'ZabbixApi\\ZabbixApi' => $vendorDir . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApi.class.php',
-    'ZabbixApi\\ZabbixApiAbstract' => $vendorDir . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApiAbstract.class.php',
 );

@@ -1,5 +1,5 @@
 #docker build --tag php:parallel --build-arg PUID=$(id -u) --build-arg PGID=$(id -g) --build-arg USER=$(id -un) .
-FROM php:7.2-zts
+FROM php:7.4-zts
 
 RUN apt-get update \
   && apt-get -y install openssh-client git
@@ -21,6 +21,9 @@ RUN pecl install parallel-1.1.4 \
 RUN pecl install stats-2.0.3 \
   && docker-php-ext-enable stats
 
+#RUN pecl install psr-1.2.0 \
+#  && docker-php-ext-enable psr
+
 #RUN apt-get -y install libssh2-1-dev \
 #  && pecl install ssh2-1.2 \
 #  && docker-php-ext-enable ssh2
@@ -29,7 +32,7 @@ RUN pecl install stats-2.0.3 \
 
 # Mail configuration
 # install
-RUN apt-get install -y msmtp mailutils
+RUN apt-get update && apt-get install -y msmtp mailutils
 # config
 COPY msmtprc /etc/msmtprc
 RUN chmod 644 /etc/msmtprc

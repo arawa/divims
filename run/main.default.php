@@ -3,7 +3,7 @@
 /**
  * How to execute this script in the Docker container :
  * Change directory to the root directory of the application
- * docker container run --rm --user $(id -u):$(id -g) -v $(pwd):/app/ php:parallel php /app/main.php
+ * docker container run --rm --user $(id -u):$(id -g) -v $(pwd):/app/ php:parallel php /app/run/main.php  --project=<project>
  */
 
 // Get base directory ('/app')

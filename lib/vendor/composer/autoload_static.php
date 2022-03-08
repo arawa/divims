@@ -20,6 +20,10 @@ class ComposerStaticInitc894a97f1b74723778cb8d32cf3f27d3
     );
 
     public static $prefixLengthsPsr4 = array (
+        'Z' => 
+        array (
+            'ZabbixApi\\' => 10,
+        ),
         'S' => 
         array (
             'Symfony\\Polyfill\\Php72\\' => 23,
@@ -55,6 +59,10 @@ class ComposerStaticInitc894a97f1b74723778cb8d32cf3f27d3
     );
 
     public static $prefixDirsPsr4 = array (
+        'ZabbixApi\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/confirm-it-solutions/php-zabbix-api/src',
+        ),
         'Symfony\\Polyfill\\Php72\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php72',
@@ -115,9 +123,6 @@ class ComposerStaticInitc894a97f1b74723778cb8d32cf3f27d3
 
     public static $classMap = array (
         'Normalizer' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/Resources/stubs/Normalizer.php',
-        'ZabbixApi\\Exception' => __DIR__ . '/..' . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApiAbstract.class.php',
-        'ZabbixApi\\ZabbixApi' => __DIR__ . '/..' . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApi.class.php',
-        'ZabbixApi\\ZabbixApiAbstract' => __DIR__ . '/..' . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApiAbstract.class.php',
     );
 
     public static function getInitializer(ClassLoader $loader)

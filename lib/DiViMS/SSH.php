@@ -82,7 +82,7 @@ Class SSH {
                 $this->logger->error("SSH command failed. Max tries reached.", ['command' => $this->base_ssh_command . " $command $stderr", "return_val" => $return_value, "try" => $count]);
                 return false;
             }
-            $this->logger->warning("SSH command failed. Retrying in $sleep_time seconds.", ['command' => $this->base_ssh_command . " $command $stderr", "return_val" => $return_value, "try" => $count]);
+            $this->logger->warning("SSH command failed. Retrying in $sleep_time seconds.", ['command' => $this->base_ssh_command . " $command $stderr", "return_val" => $return_value, "output" => $this->output, "try" => $count]);
             sleep($sleep_time);
         }
 
