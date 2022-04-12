@@ -53,7 +53,7 @@ class SCW {
     $zone = $params['zone'] ?? $this->config->get('scw_zone');
     $auth_token = $params['auth_token'] ?? $this->config->get('scw_auth_token');
 
-    $this->curl_base_url = $this->curl_base_url . $zone . '/';
+    $this->curl_base_url = $this->curl_base_url . $zone;
     $this->auth_token = $auth_token;
 
   }
