@@ -1,16 +1,13 @@
 # DiViM-S
-Dynamic VM Scheduler
+Dynamic Virtual Machine Scheduler for BigBlueButton
+Allows scaling of the infrastructure according to the observed load or a forecasted schedule
+Compatible with [Scaleway](https://www.scaleway.com) cloud
 
 ## Requirements
 
 You should install these dependancies :
 
 - docker-ce
-
-Project makes use of PHP/parallel library
-- Documentation : https://www.php.net/parallel
-- Development Repository : https://github.com/krakjoe/parallel/tree/release
-- Installation : https://pecl.php.net/package/parallel
 
 ## First run : compile docker container
 
@@ -49,3 +46,7 @@ For example :
 ```php
 $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 ```
+
+# Sponsors
+
+Ministère de l'Éducation Nationale française ([Direction du Numérique pour l'Éducation](https://www.education.gouv.fr/direction-du-numerique-pour-l-education-dne-9983)) 
