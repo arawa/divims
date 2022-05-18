@@ -15,7 +15,7 @@ Project makes use of PHP/parallel library
 ## First run : compile docker container
 
 ```bash
-docker build --tag php:parallel .
+docker build --tag php:parallel --build-arg PUID=$(id -u) --build-arg PGID=$(id -g) --build-arg USER=$(id -un) .
 ```
 
 ## Add a project
