@@ -1,7 +1,7 @@
 # DiViM-S
-Dynamic Virtual Machine Scheduler for [BigBlueButton](https://docs.bigbluebutton.org/)
+Opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/)
 
-Allows scaling of the infrastructure according to the observed load or a forecasted schedule
+Allows scaling of your BBB infrastructure according to the observed load or a forecasted schedule
 
 Compatible with [Scaleway](https://www.scaleway.com) cloud
 
