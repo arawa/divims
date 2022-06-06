@@ -1,9 +1,9 @@
 # DiViM-S
 Opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/)
 
-Allows scaling of your BBB infrastructure according to the observed load or a forecasted schedule
+Allows scaling your BBB infrastructure according to the observed load or a forecasted schedule and simultaneously reducing your hosting costs.
 
-Compatible with [Scaleway](https://www.scaleway.com) cloud
+Compatible with [Scaleway](https://www.scaleway.com) hosting.
 
 ## Requirements
 
