@@ -1,9 +1,19 @@
 # DiViM-S
-Opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/)
+Opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/) and [Scalelite](https://github.com/blindsidenetworks/scalelite)
 
 Allows scaling your BBB infrastructure according to the observed load or a forecasted schedule and simultaneously reducing your hosting costs.
 
 Compatible with [Scaleway](https://www.scaleway.com) hosting.
+
+
+## How it works
+A CRON job launches a Docker container every 5 minutes (recommended). This container runs a PHP7 app that connects to your Scalelite's pool :
+- Queries Scalelite to retrieve load information (number of participants, meetings and load)
+- Queries each BBB server for system and recordings processing information
+- Makes decision on wether BBB servers should be halted or started
+- Acts on hosting infrastructure (currently only Scaleway) to start (clone) or delete virtual machines
+- Acts on Scalelite to enable, drain or disable BBB servers
+- Sends warnings and alerts to an email address
 
 ## Requirements
 
@@ -17,7 +27,7 @@ You should install these dependancies :
 docker build --tag php:parallel --build-arg PUID=$(id -u) --build-arg PGID=$(id -g) --build-arg USER=$(id -un) .
 ```
 
-## Add a project
+## Add a project and configure
 
 ```
 mkdir -p config/project/<project-name>
