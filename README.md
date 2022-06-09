@@ -3,7 +3,7 @@ Opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/) and
 
 Allows scaling your BBB infrastructure according to the observed load or a forecasted schedule and simultaneously reducing your hosting costs.
 
-Compatible with [Scaleway](https://www.scaleway.com) hosting.
+Currently compatible with [Scaleway](https://www.scaleway.com) hosting.
 
 
 ## How it works
