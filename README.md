@@ -10,7 +10,7 @@ Compatible with [Scaleway](https://www.scaleway.com) hosting.
 A CRON job launches a Docker container every 5 minutes (recommended). This container runs a PHP7 app that connects to your Scalelite's pool :
 - Queries Scalelite to retrieve load information (number of participants, meetings and load)
 - Queries each BBB server for system and recordings processing information
-- Makes decision on wether BBB servers should be halted or started
+- Makes decision on whether BBB servers should be halted or started
 - Acts on hosting infrastructure (currently only Scaleway) to start (clone) or delete virtual machines
 - Acts on Scalelite to enable, drain or disable BBB servers
 - Sends warnings and alerts to an email address
