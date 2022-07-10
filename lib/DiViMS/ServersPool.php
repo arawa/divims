@@ -1536,7 +1536,7 @@ class ServersPool
             // get most recent event in the past
             $start = 0;
             foreach($calendar->VEVENT as $event) {
-                $new_start = $event->DTSTART->getDateTime()->getTimeSTamp();
+                $new_start = $event->DTSTART->getDateTime()->getTimestamp();
                 if ($new_start > $start) {
                     $start = $new_start;
                     $my_event = $event;
