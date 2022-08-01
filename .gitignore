@@ -1,7 +1,7 @@
 Divim-S.code-workspace
 tmp/
 cache/
-log/
+/log
 /run/main.php
 msmtprc
 config/project/
