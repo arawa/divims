@@ -47,4 +47,4 @@ ARG USER
 # Add the group (if not existing) 
 # then add the user to the numbered group 
 RUN groupadd -g ${PGID} ${USER} || true && \
-    useradd --create-home --uid ${PUID} --gid `getent group ${PGID} | cut -d: -f1` ${USER} || true 
+    useradd --create-home --uid ${PUID} --gid `getent group ${PGID} | cut -d: -f1` ${USER} || true

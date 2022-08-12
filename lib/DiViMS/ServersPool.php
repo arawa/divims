@@ -1189,6 +1189,9 @@ class ServersPool
                 "commercial_type" => $this->config->get('clone_commercial_type'),
                 "image" => "$image_id",
                 "project" => $this->config->get('scw_project_id'),
+                "volumes" => [
+                    "0" => ["boot" => true],
+                ],
             ];
 
             $tries = 0;
