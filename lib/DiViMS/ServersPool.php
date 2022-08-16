@@ -28,12 +28,6 @@ use \BigBlueButton\BigBlueButton;
 use \BigBlueButton\Parameters\GetRecordingsParameters;
 use \BigBlueButton\Parameters\EndMeetingParameters;
 
-// https://github.com/confirm/PhpZabbixApi
-// https://www.zabbix.com/documentation/current/manual/api
-// composer require 'confirm-it-solutions/php-zabbix-api:^2.4'
-use \ZabbixApi\ZabbixApi;
-use \ZabbixApi\Exception;
-
 class ServersPool
 {
 
@@ -558,7 +552,7 @@ class ServersPool
             }
         } catch (\Error $err) {
             $this->logger->error("Parralel process failed", ['message' => $err->getMessage()]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error("Parralel process failed", ['message' => $e->getMessage()]);
         }
 
@@ -681,6 +675,7 @@ class ServersPool
      * @param int $server_number the server number
      * @return bool Success status
      **/
+    /*
     public function addServerToHoster(int $server_number)
     {
         if ($this->config->get('hoster_api') == 'SCW') {
@@ -700,6 +695,7 @@ class ServersPool
         $this->logger->info("Add new server to hoster successful.", ["server_number" => $server_number]);
         return true;
     }
+    */
 
     /**
      * Execute an action on the Scalelite server
@@ -818,7 +814,7 @@ class ServersPool
             }
         } catch (\Error $err) {
             $this->logger->error("PHP/Parallel failed", ['error_message' => $err->getMessage()]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error("PHP/Parallel failed", ['error_message' => $e->getMessage()]);
         }
 
@@ -1198,6 +1194,7 @@ class ServersPool
             ];
 
             $tries = 0;
+            $server_id = '';
             while (true) {
                 $tries++;
                 $result = $this->hoster_api->createServer($server_spec);
@@ -1493,7 +1490,7 @@ class ServersPool
                     break;
                 }
                 if ($try_count == $max_tries) {
-                    throw new Exception("Fetch online calendar failed $max_tries times.");
+                    throw new \Exception("Fetch online calendar failed $max_tries times.");
                 }
                 $this->logger->warning("Fetch online capacity calendar failed. Retrying.", ['try_count' => $try_count]);
                 $try_count++;
@@ -1501,7 +1498,7 @@ class ServersPool
                 usleep(rand(800000,1500000));
             }
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Can not fetch online adaptation calendar. Using local cached calendar instead.', ['message' => $e->getMessage(), 'ical_stream' => $ical_stream]);
         }
 
@@ -1509,13 +1506,13 @@ class ServersPool
             $this->logger->debug("Open local cached capacity adaptation ical calendar");
             $file = $ical_cached_file;
             if (!file_exists($file)) {
-                throw new Exception('File does not exist.');
+                throw new \Exception('File does not exist.');
             }
             $handle = @fopen($file, 'r');
             if (!$handle) {
-                throw new Exception('File open failed.');
+                throw new \Exception('File open failed.');
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->critical('Can not open local cached ical file. Abort.', ['message' => $e->getMessage(), 'ical_cached_file' => $file]);
             return false;
         }
@@ -1739,7 +1736,7 @@ class ServersPool
             }
         } catch (\Error $err) {
             $this->logger->error("PHP/Parallel failed", ['error_message' => $err->getMessage()]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error("PHP/Parallel failed", ['error_message' => $e->getMessage()]);
         }
 
@@ -2012,6 +2009,7 @@ class ServersPool
             }
             // Terminate unresponsive servers
             if ($v['hoster_state'] == 'running' and $v['custom_state'] == 'unresponsive') {
+                $bbb_status = $v['bbb_status'];
                 $this->logger->warning('Add unresponsive server to terminate list.', ['domain' => $domain, 'bbb_status' => $bbb_status]);
                 $servers_ready_for_terminate[$domain] = $v;
                 continue;
@@ -2161,7 +2159,7 @@ class ServersPool
                 } catch (\RuntimeException $e) {
                     $this->logger->error("Can not retrieve info from BBB server", ['domain' => $domain, "BBB_api_error" => $e->getMessage()]);
                     continue;
-                } catch (Exception $e) {
+                } catch (\Exception $e) {
                     $this->logger->error("Can not retrieve info from BBB server", ['domain' => $domain, "BBB_api_error" => $e->getMessage()]);
                     continue;
                 }
