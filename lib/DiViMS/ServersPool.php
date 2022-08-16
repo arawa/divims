@@ -1189,6 +1189,9 @@ class ServersPool
                 "commercial_type" => $this->config->get('clone_commercial_type'),
                 "image" => "$image_id",
                 "project" => $this->config->get('scw_project_id'),
+                // The following "volumes" block is a hack to force the API to use the original volume size
+                // Without this block, a 50G image snapshot would result into a 600G volume for a GP1-M instance
+                // See https://developers.scaleway.com/en/products/instance/api/#post-7482b1
                 "volumes" => [
                     "0" => ["boot" => true],
                 ],
