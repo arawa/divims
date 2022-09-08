@@ -20,8 +20,9 @@ use DiViMS\SSH;
 // composer require monolog/monolog
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
-//use Monolog\Handler\DeduplicationHandler;
-//use Monolog\Handler\NativeMailerHandler;
+use Monolog\Handler\DeduplicationHandler;
+use Monolog\Handler\NativeMailerHandler;
+use Monolog\Handler\FilterHandler;
 
 // https://github.com/confirm/PhpZabbixApi
 // https://www.zabbix.com/documentation/current/manual/api
@@ -56,8 +57,27 @@ $logger = new Logger($project);
 $log_level = isset($options['log-level']) ? constant("Monolog\Logger::" . strtoupper($options['log-level'])) : Monolog\Logger::DEBUG;
 
 $logger->setTimezone(new \DateTimeZone('Europe/Paris'));
+// Store info logs locally
 $logger->pushHandler(new StreamHandler("$base_directory/log/$project.log", Logger::INFO));
+// Show logs on stdout
 $logger->pushHandler(new StreamHandler('php://stdout', $log_level));
+// Mail only warning logs every day
+$logger->pushHandler(
+    new FilterHandler(
+        new DeduplicationHandler(
+            new NativeMailerHandler("<mail_recipient_address>", "Warning : DiViM-S $project", "<mail_from_address>", Logger::WARNING),
+            "/app/tmp/${project}_email_warning.log", Logger::WARNING, 86400
+        ),
+        Logger::WARNING, Logger::WARNING
+    )
+);
+// Mail error and more critical logs every hour
+$logger->pushHandler(
+    new DeduplicationHandler(
+        new NativeMailerHandler("<mail_recipient_address>", "Error : DiViM-S $project", "<mail_from_address>", Logger::ERROR),
+        "/app/tmp/${project}_email_error.log", Logger::ERROR, 3600
+    )
+);
 
 // Create config
 $config = new Config($project, $logger);
