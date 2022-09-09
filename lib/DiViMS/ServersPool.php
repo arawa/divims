@@ -149,13 +149,13 @@ class ServersPool
 
             // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
-                $this->logger->warning("Unresponsive server detected. Tag server as 'unresponsive'. Server will be powered off.", ['domain' => $domain, 'bbb_status' => $bbb_status]);
+                $this->logger->warning("Unresponsive server $domain detected. Tag server as 'unresponsive'. Server will be powered off.", ['domain' => $domain, 'bbb_status' => $bbb_status]);
                 $servers[$domain]['custom_state'] = 'unresponsive';
             }
 
             // Warn about servers when BBB malfunctions
             if ($v['hoster_state'] == 'running' and $v['bbb_status'] == 'KO' and $v['hoster_state_duration'] >= 120) {
-                $this->logger->warning("BBB malfunction detected. Check required.", ['domain' => $domain, 'scalelite_status' => $v['scalelite_status']]);
+                $this->logger->warning("BBB server $domain malfunction detected. Check required.", ['domain' => $domain, 'scalelite_status' => $v['scalelite_status']]);
             }
 
         }
@@ -503,7 +503,7 @@ class ServersPool
                     $out = $ssh->getOutput();
                 } else {
                     if ($error_log) {
-                        $logger->error("Can not poll BigBlueButton server for stats.", ["domain" => $domain]);
+                        $logger->error("Can not poll BigBlueButton server $domain for stats.", ["domain" => $domain]);
                     }
                     $more_data[$i] = [];
                     continue;
@@ -551,9 +551,9 @@ class ServersPool
                 $future[$i] = \parallel\run($producer, [($i + 1), $start_id, $end_id, $data, $error_log, serialize($this->config), serialize($this->logger)]);
             }
         } catch (\Error $err) {
-            $this->logger->error("Parralel process failed", ['message' => $err->getMessage()]);
+            $this->logger->error('Parralel process "SSHPollBBBServers" failed.', ['message' => $err->getMessage()]);
         } catch (\Exception $e) {
-            $this->logger->error("Parralel process failed", ['message' => $e->getMessage()]);
+            $this->logger->error('Parralel process "SSHPollBBBServers" failed', ['message' => $e->getMessage()]);
         }
 
         // Agregate new values when a worker finishes until all workers have finished
@@ -669,34 +669,6 @@ class ServersPool
         return $stats;
     }
 
-
-    /**
-     * Add a server to the pool by cloning a backed up image
-     * @param int $server_number the server number
-     * @return bool Success status
-     **/
-    /*
-    public function addServerToHoster(int $server_number)
-    {
-        if ($this->config->get('hoster_api') == 'SCW') {
-            $server_data = $this->cloneServerSCW($server_number);
-            if (!$server_data) {
-                $this->logger->error("Clone server failed. Abort add.", ['server_number' => $server_number]);
-                return false;
-            }
-        }
-
-        if ($this->config->get('clone_dns_create_entry')) {
-            if ($this->config->get('clone_dns_entry_api') == 'OVH') {
-                $this->createDNSEntriesOVH($server_data);
-            }
-        }
-
-        $this->logger->info("Add new server to hoster successful.", ["server_number" => $server_number]);
-        return true;
-    }
-    */
-
     /**
      * Execute an action on the Scalelite server
      * @param array $params ["action" => ('enable'|'cordon'), "domain" => 'domain.example.com', 'id' => scalelite_id]. id is optional but takes precedence over domain to compute the id.
@@ -716,7 +688,7 @@ class ServersPool
                     if ($ssh->exec("$base_command servers:enable[$id]", ['max_tries' => 3])) {
                         return true;
                     } else {
-                        $this->logger->error("Can not enable server in Scalelite", ['domain' => $domain, 'id' => $id, 'Scalelite Host' => $this->config->get('scalelite_host'),]);
+                        $this->logger->error("Can not enable server $domain in Scalelite", ['domain' => $domain, 'id' => $id, 'Scalelite Host' => $this->config->get('scalelite_host'),]);
                         return false;
                     }
 
@@ -727,7 +699,7 @@ class ServersPool
                     if ($ssh->exec("$base_command servers:cordon[$id]", ['max_tries' => 3])) {
                         return true;
                     } else {
-                        $this->logger->error("Can not cordon server in Scalelite", ['domain' => $domain]);
+                        $this->logger->error("Can not cordon server $domain in Scalelite", ['domain' => $domain]);
                         return false;
                     }
                     break;
@@ -813,9 +785,9 @@ class ServersPool
                 sleep(1);
             }
         } catch (\Error $err) {
-            $this->logger->error("PHP/Parallel failed", ['error_message' => $err->getMessage()]);
+            $this->logger->error('Parallel process "ScaleliteActOnServersList" failed.', ['error_message' => $err->getMessage()]);
         } catch (\Exception $e) {
-            $this->logger->error("PHP/Parallel failed", ['error_message' => $e->getMessage()]);
+            $this->logger->error('Parallel process "ScaleliteActOnServersList" failed.', ['error_message' => $e->getMessage()]);
         }
 
         // Wait until all parallel processes have finished
@@ -966,178 +938,6 @@ class ServersPool
         sleep(5);
     }
 
-
-    /**
-     * Add a server to the pool by cloning a backed up image
-     * @param int $server_number the server number
-     * @return array|bool ['external_ipv4',
-     *                 'external_ipv6',
-     *                 'internal_ipv4',
-     *                 'hostname', // The short hostname Example : arawa-p-bbb-w4
-     *                 'domain', // Domain known from Scalelite Example bbb-w4.example.com
-     *            ] | false // in case of failure
-     **/
-    /*
-    private function cloneServerSCW(int $server_number)
-    {
-
-        $hostname = $this->getHostname($server_number);
-        $domain = $this->getServerDomain($server_number);
-
-        $this->logger->info("Start cloning new VM.", ["hostname" => $hostname, "domain" => $domain]);
-
-        // Case of an instance upgrade or a replacement
-        // The IP from the old instance is reused and attached to the new instance
-        if ($this->config->get('clone_reuse_public_ip')) {
-            $this->logger->info('Get old server information at hoster for replacement .', ['hostname' => $hostname]);
-            $old_servers = $this->hoster_api->getServerByName($hostname);
-            if (isset($old_servers['servers'][0]['name'])) {
-                $old_server = $old_servers['servers'][0];
-                $old_server_id = $old_server['id'];
-                $old_public_ip_id = $old_server['public_ip']['id'];
-                $ipv4 = $old_server['public_ip']['address'];
-            } else {
-                $this->logger->error('Get old server information failed. Aborting.', ['domain' => $domain]);
-                return false;
-            }
-        }
-
-        // Retrieve image id
-        $result = $this->hoster_api->getImages(['name' => $this->config->get('clone_image_name')]);
-        if (isset($result['images'])) {
-            $image_id = $result['images'][0]['id'];
-            $this->logger->info("Select source image_id : $image_id for new VM", ["hostname" => $hostname]);
-        } else {
-            $this->logger->error("Retrieve image to clone failed. Aborting.", ["hostname" => $hostname, 'hoster_response' => json_encode($result, JSON_PRETTY_PRINT)]);
-            return false;
-        }
-
-        // Create New instance
-        $server_spec = [
-            "name" => $hostname,
-            "dynamic_ip_required" => false,
-            "enable_ipv6" => true,
-            "commercial_type" => $this->config->get('clone_commercial_type'),
-            "image" => "$image_id",
-            //"tags" => ["app-BBB", "client-DNE", "prj-pocbbb"],
-            "project" => $this->config->get('scw_project_id'),
-        ];
-
-        $tries = 0;
-        while (true) {
-            $tries++;
-            $result = $this->hoster_api->createServer($server_spec);
-            if (isset($result['server']['id'])) {
-                $server_id = $result['server']['id'];
-                $this->logger->info("Server created", ['hostname' => $hostname, 'server_id' => $server_id]);
-                break;
-            } elseif ($tries == 3) {
-                $this->logger->error("Server creation error : $tries failed tentatives. Aborting.", ['hostname' => $hostname, "api_message" => print_r($result, true)]);
-                return false;
-            }
-            sleep(1);
-        }
-
-        // In case we reuse public IP, attach to new server and delete old server
-        if (isset($ipv4)) {
-            // Attach the existing IP to the newly created server
-            $this->logger->info("Attach old IP to new server", ['hostname' => $hostname, "external_ipv4" => $ipv4]);
-            $result = $this->hoster_api->updateIP($old_public_ip_id, ['server' => $server_id]);
-            if (isset($result['ip']['server']['id']) and $result['ip']['server']['id'] == $server_id) {
-                // Attach IP successful. Delete old server.
-                $this->logger->info('Delete old server.', ['hostname' => $hostname, 'server_id' => $old_server_id]);
-                $result = $this->hoster_api->actOnServer($old_server_id, ['action' => 'terminate']);
-                if (!$result) {
-                    $this->logger->error('Delete old server failed. Continue cloning process anyway.', ['hostname' => $hostname]);
-                }
-            } else {
-                $this->logger->error("Attach old IP to new server failed. Aborting.", ['hostname' => $hostname, "external_ipv4" => $ipv4, "api_message" => print_r($result, true)]);
-                return false;
-            }
-        } else {
-            // Reserve new ipv4 IP
-            $ip_spec = [
-                "project" => $this->config->get('scw_project_id'),
-                "server" => $server_id
-            ];
-            $this->logger->info("Reserve public IPv4 and attach to new server.", ['hostname' => $hostname]);
-            $result = $this->hoster_api->reserveIP($ip_spec);
-            if (isset($result['ip']['address'])) {
-                $ipv4 = $result['ip']['address'];
-                $this->logger->info("Public IPv4 address reserved and attached to server", ['hostname' => $hostname, "external_ipv4" => $ipv4]);
-            } else {
-                $this->logger->error("Reserve new public IPv4 failed. Aborting.", ['hostname' => $hostname, "hoster_message" => json_encode($result, JSON_PRETTY_PRINT)]);
-                return false;
-            }
-        }
-
-        //poweron server
-        $this->logger->info("Power on new server instance.", ['hostname' => $hostname]);
-        $result = $this->hoster_api->actOnServer($server_id, ['action' => 'poweron']);
-        if (!$result) {
-            $this->logger->error("Power on VM failed. Aborting.", ['hostname' => $hostname]);
-            return false;
-        }
-
-        //Wait for server to be running
-        $try_count = 0;
-        $sleep = 5; // seconds between tentatives
-        $max_tries = 180; // max number of tries
-        $this->logger->info("Wait for server to be up and running", ['hostname' => $hostname]);
-        while (true) {
-            $delay = $try_count * $sleep;
-            $try_count++;
-            $result = $this->hoster_api->getServerByID($server_id);
-            if (isset($result['server']['state']) and $result['server']['state'] == "running") {
-                $this->logger->info("Server up and running $delay seconds after poweron action", ['hostname' => $hostname]);
-                break;
-            } elseif ($try_count == $max_tries) {
-                $this->logger->error("Server still not running $delay seconds after poweron action. Aborting.", ['hostname' => $hostname]);
-                return false;
-            }
-            sleep($sleep);
-        }
-
-        $this->logger->info("Wait for ssh to be ready", ['hostname' => $hostname, "ipv4" => $ipv4]);
-        $max_tries = 60;
-        $try_count = 1;
-        while (!($connection = @fsockopen($ipv4, $this->config->get('ssh_port'), $errno, $errstr, 0.2))) {
-            echo ".";
-            sleep(1);
-            $try_count++;
-            if ($try_count == $max_tries) {
-                $this->logger->error("Can not establish SSH connection. Max tries reached. Abort.", ['hostname' => $hostname]);
-                return false;
-            }
-        }
-        fclose($connection);
-
-        $this->logger->info("Wait 5 seconds for ssh to be well established", ['hostname' => $hostname, "ipv4" => $ipv4]);
-        sleep(5);
-
-        //Retrieve $ipv6
-        $result = $this->hoster_api->getServerByID($server_id);
-        if (isset($result['server'])) {
-            $ipv6 = $result['server']['ipv6']['address'];
-            $internal_ip = $result['server']['private_ip'];
-            $this->logger->info("Retrieved IP info for server", ['hostname' => $hostname, "external_ipv6" => $ipv6, "internal_ipv4" => $internal_ip]);
-        } else {
-            $this->logger->error("Retrieve IP info for server failed. Aborting.", ['hostname' => $hostname, 'hoster_response' => json_encode($result, JSON_PRETTY_PRINT)]);
-            return false;
-        }
-
-
-        return [
-            'external_ipv4' => $ipv4,
-            'external_ipv6' => $ipv6,
-            'internal_ipv4' => $internal_ip,
-            'hostname' => $hostname,
-            'domain' => $domain,
-        ];
-    }
-    */
-
-
     /**
      * Add a server to the pool by cloning a backed up image
      * @param int $server_number the server number
@@ -1163,7 +963,7 @@ class ServersPool
             if (isset($hoster_ip['ip']['id'])) {
                 $hoster_ip_id = $hoster_ip['ip']['id'];
             } else {
-                $this->logger->error('Can not retrieve IP at hoster', ['domain' => $domain]);
+                $this->logger->error("Can not retrieve IP at hoster for server $domain", ['domain' => $domain, 'IP' => $external_ipv4]);
                 return false;
             }
             
@@ -1203,7 +1003,7 @@ class ServersPool
                     $this->logger->info("Server created", ['hostname' => $hostname, 'server_id' => $server_id]);
                     break;
                 } elseif ($tries == 3) {
-                    $this->logger->error("Server creation error : $tries failed tentatives. Aborting.", ['hostname' => $hostname, "api_message" => print_r($result, true)]);
+                    $this->logger->error("Server $hostname creation error : $tries failed tentatives. Aborting.", ['hostname' => $hostname, "api_message" => print_r($result, true)]);
                     return false;
                 }
                 sleep(1);
@@ -1213,7 +1013,7 @@ class ServersPool
             $this->logger->info("Attach IP to cloned server", ['hostname' => $hostname, "external_ipv4" => $external_ipv4]);
             $result = $this->hoster_api->updateIP($hoster_ip_id, ['server' => $server_id]);
             if (!isset($result['ip']['server']['id']) or $result['ip']['server']['id'] != $server_id) {
-                $this->logger->error("Attach IP to cloned server failed. Aborting.", ['hostname' => $hostname, "external_ipv4" => $external_ipv4, "api_message" => print_r($result, true)]);
+                $this->logger->error("Attach IP to cloned server $hostname failed. Aborting.", ['hostname' => $hostname, "external_ipv4" => $external_ipv4, "api_message" => print_r($result, true)]);
                 return false;
             }
 
@@ -1221,7 +1021,7 @@ class ServersPool
             $this->logger->info("Power on new server instance.", ['hostname' => $hostname]);
             $result = $this->hoster_api->actOnServer($server_id, ['action' => 'poweron']);
             if (!$result) {
-                $this->logger->error("Power on VM failed. Aborting.", ['hostname' => $hostname]);
+                $this->logger->error("Power on server $hostname failed. Aborting.", ['hostname' => $hostname]);
                 return false;
             }
 
@@ -1234,77 +1034,6 @@ class ServersPool
         }
  
     }
-
-    /*
-    public function addServerToScalelite(array $server_data)
-    {
-        $tmpfname = tempnam(__DIR__ . "/../../tmp", "addServerToScalelite_");
-
-        // Write new data to file
-        $this->logger->debug("Write new data to file addToScalelite.sh", ['domain' => $server_data['domain']]);
-        $data = "NEW_DOMAIN=" . $server_data['domain'] . "\n";
-        $data .= "SECRET=" . $this->config->get('clone_bbb_secret') . "\n";
-        $enable_in_scalelite = $this->config->get('clone_enable_in_scalelite') ? 'true' : 'false';
-        $data .= "ENABLE_IN_SCALELITE=" .  $enable_in_scalelite . "\n";
-        $file = __DIR__ . "/../scripts/addToScalelite.sh";
-        $script = file_get_contents($file);
-        $script = preg_replace('/(##BEGIN-INSERT).*?(##END-INSERT)/s', "$1\n" . $data . "$2", $script);
-        file_put_contents($tmpfname, $script);
-
-        $ssh = new SSH(['host' => $this->config->get('scalelite_host')], $this->config, $this->logger);
-        if ($ssh->exec("sudo /bin/bash < " . $tmpfname, ['timeout' => 20, 'debug' => true, 'max_tries' => 3])) {
-            $result = true;
-        } else {
-            $this->logger->error("Can not add server to Scalelite", ['domain' => $server_data['domain']]);
-            $result = false;
-        }
-
-        unlink($tmpfname);
-        return $result;
-    }
-    */
-
-    /*
-    public function reconfigureServer(array $server_data)
-    {
-
-        $this->logger->info('Reconfigure BigBlueButton server.', ['domain' => $server_data['domain']]);
-
-        $tmpfname = tempnam(__DIR__ . "/../../tmp", "reconfigureServer_");
-
-        $data = "OLD_DOMAIN=" . $this->config->get('clone_old_domain') . "\n";
-        $data .= "OLD_INTERNAL_IPV4=" . $this->config->get('clone_old_internal_ipv4') . "\n";
-        $data .= "OLD_EXTERNAL_IPV4=" . $this->config->get('clone_old_external_ipv4') . "\n";
-        $data .= "OLD_EXTERNAL_IPV6=" . $this->config->get('clone_old_external_ipv6') . "\n";
-        $data .= "NEW_DOMAIN=" . $server_data['domain'] . "\n";
-        $data .= "NEW_INTERNAL_IPV4=" . $server_data['internal_ipv4'] . "\n";
-        $data .= "NEW_EXTERNAL_IPV4=" . $server_data['external_ipv4'] . "\n";
-        $data .= "NEW_EXTERNAL_IPV6=" . $server_data['external_ipv6'] . "\n";
-
-        // Test if we use Let's Encrypt
-        if (!$this->config->get('clone_use_wildcard_cert')) {
-            $data .= "LETSENCRYPT=true\n";
-        }
-        if ($this->config->get('bbb_version') == '2.3') {
-            $file = __DIR__ . "/../scripts/reconfigureVM-2.3.sh";
-        } else {
-            $file = __DIR__ . "/../scripts/reconfigureVM-2.2.sh";
-        }
-        $script = file_get_contents($file);
-        $script = preg_replace('/(##BEGIN-INSERT).*?(##END-INSERT)/s', "$1\n" . $data . "$2", $script);
-        file_put_contents($tmpfname, $script);
-
-        $ssh = new SSH(['host' => $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain') . '.' . $this->config->get('clone_dns_entry_zone')], $this->config, $this->logger);
-
-        if ($ssh->exec("sudo /bin/bash < " . $tmpfname, ['timeout' => 180, 'debug' => true, 'max_tries' => 3, 'sleep_time' => 1])) {
-            $result = true;
-        } else {
-            $result = false;
-        }
-        unlink($tmpfname);
-        return $result;
-    }
-    */
 
     public function generateNFSCommands()
     {
@@ -1354,7 +1083,6 @@ class ServersPool
         }
 
     }
-
 
     /**
      * Check Hoster servers and DNS entries against hoster entries
@@ -1671,92 +1399,6 @@ class ServersPool
     }
 
     /**
-     * Halt BBB servers in parallel processing
-     * @param array $domains Indexed array of server domains
-     * @return array Success list of domains
-     */
-    private function SSHHaltServers(array $domains)
-    {
-
-        $this->logger->info('Check if BigBlueButton servers can be halted and halt them, in parallel.');
-
-        // Parallel processing
-        $min_id = 0;
-        $max_id = count($domains);
-
-        list($batch_size, $workers) = $this->getParallelParameters($min_id, $max_id);
-
-        //Standalone function to be executed in a parallel thread
-        //Receives all parameters : can not access global variables
-        $producer = function (int $worker, int $start_id, int $end_id, array $domains, array $list, $serialized_config, $serialized_logger) {
-            include_once __DIR__ . '/../vendor/autoload.php';
-
-            spl_autoload_register(function ($class_name) {
-                include __DIR__ . "/../" . str_replace('\\', '/', $class_name) . '.php';
-            });
-
-            $config = unserialize($serialized_config);
-            $logger = unserialize($serialized_logger);
-            $pool = new ServersPool($config, $logger);
-            $halted_servers = [];
-
-            for ($i = $start_id; $i < $end_id; $i++) {
-                $domain = $domains[$i];
-
-                // Properly halt server               
-                $server_number = $pool->getServerNumberFromDomain($domain);
-                $hostname_fqdn = $pool->getHostnameFQDN($server_number);
-                $ssh = new SSH(['host' => $hostname_fqdn], $config, $logger);
-                $logger->info('Stop services on BBB server.', ['domain' => $domain]);
-                if (!$ssh->exec("sudo /bin/bash < " . __DIR__ . "/../scripts/BBB-stopServices", ['timeout' => 120, 'max_tries' => 3])) {
-                    $logger->warning('Stop BBB services failed with SSH error code ' . $ssh->getReturnValue() . '. Halt anyway.', ['domain' => $domain]);
-                }
-                $logger->info('Halt server and wait 30 seconds.', ['domain' => $domain]);
-                $ssh->exec("'(sleep 5 && sudo halt) &'", ['timeout' => 20, 'max_tries' => 3]);
-
-                // Wait 30 seconds for server to properly halt
-                sleep(30);
-
-                $halted_servers[$i] = $domain;
-            }
-
-            return $halted_servers;
-        };
-
-        try {
-            // Create our workers and have them start working on their task
-            for ($i = 0; $i < $workers; $i++) {
-                $start_id = $min_id + ($i * $batch_size);
-                $end_id = $start_id + $batch_size;
-                if ($i == ($workers - 1)) {
-                    $end_id = $max_id;
-                }
-                $active[$i] = true;
-                $future[$i] = \parallel\run($producer, [($i + 1), $start_id, $end_id, $domains, $this->list, serialize($this->config), serialize($this->logger)]);
-            }
-        } catch (\Error $err) {
-            $this->logger->error("PHP/Parallel failed", ['error_message' => $err->getMessage()]);
-        } catch (\Exception $e) {
-            $this->logger->error("PHP/Parallel failed", ['error_message' => $e->getMessage()]);
-        }
-
-        // Wait until all parallel processes have finished
-        $halted_servers = [];
-        while (!empty($active)) {
-            foreach ($active as $i => $v) {
-                if ($future[$i]->done()) { //If worker $i finished
-                    unset($active[$i]); //Remove from active list
-                    $more_halted_servers = $future[$i]->value();
-                    $halted_servers = array_merge($halted_servers, $more_halted_servers);
-                    break;
-                }
-            }
-        }
-
-        return $halted_servers;
-    }
-
-    /**
      * Adapt pool capacity
      * @param 
      **/
@@ -1790,7 +1432,7 @@ class ServersPool
                 break;
 
             default:
-                $this->logger->error('Unknown capacity adaptation policy');
+                $this->logger->error("Unknown capacity adaptation policy: $capacity_adaptation_policy");
                 return false;
 
         }
@@ -1968,7 +1610,7 @@ class ServersPool
                     $cordon_success_list = $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $servers_to_cordon]);
 
                     if (count($enable_success_list) != count($cordon_success_list)) {
-                        $this->logger->warning("Success switch states counts do not match");
+                        $this->logger->warning("Scalelite switch states success counts do not match");
                     }
                 }
             }
@@ -1993,7 +1635,7 @@ class ServersPool
 
             // Terminate "stopped and stopped in place" servers
             if (in_array($v['hoster_state'], ['stopped', 'stopped in place'])) {
-                $this->logger->warning("Add {$v['hoster_state']} server to terminate list.", ['domain' => $domain]);
+                $this->logger->warning("Add {$v['hoster_state']} server $domain to terminate list.", ['domain' => $domain]);
                 $servers_ready_for_terminate[$domain] = $v;
                 continue;
             }
@@ -2010,7 +1652,7 @@ class ServersPool
             // Terminate unresponsive servers
             if ($v['hoster_state'] == 'running' and $v['custom_state'] == 'unresponsive') {
                 $bbb_status = $v['bbb_status'];
-                $this->logger->warning('Add unresponsive server to terminate list.', ['domain' => $domain, 'bbb_status' => $bbb_status]);
+                $this->logger->warning("Add unresponsive server $domain to terminate list.", ['domain' => $domain, 'bbb_status' => $bbb_status]);
                 $servers_ready_for_terminate[$domain] = $v;
                 continue;
             }
@@ -2051,13 +1693,13 @@ class ServersPool
                                     $meeting_id = (string) $meeting->meetingID;
                                     $meeting_name = (string) $meeting->meetingName;
                                     $meeting_password = (string) $meeting->moderatorPW;
-                                    $this->logger->warning("Meeting duration exceeds limit. Force end meeting.", compact('meeting_id', 'meeting_name','meeting_duration_minutes'));
+                                    $this->logger->warning("Meeting duration exceeds limit. Force end meeting with id $meeting_id", compact('meeting_id', 'meeting_name','meeting_duration_minutes'));
                                     $endMeetingParams = new EndMeetingParameters($meeting_id, $meeting_password);
                                     $response = $bbb->endMeeting($endMeetingParams);
                                     if ($response->getReturnCode() == 'SUCCESS') {
                                         $this->logger->info("End meeting successfull.");
                                     } else {
-                                        $this->logger->error("End meeting failed.", compact('domain', 'meeting_id', 'meeting_name'));
+                                        $this->logger->error("End meeting with id $meeting_id failed.", compact('domain', 'meeting_id', 'meeting_name'));
                                     }
                                 }
                             }
@@ -2066,7 +1708,7 @@ class ServersPool
                             $this->logger->info("Server has no remaining meetings.", ['domain' => $domain]);
                         }
                     } else {
-                        $this->logger->error("Can not retrieve meetings info.", ['domain' => $domain]);
+                        $this->logger->error("Can not retrieve meetings info for server $domain.");
                         continue;
                     }
 
@@ -2095,7 +1737,7 @@ class ServersPool
                                     $recording_state = (string) $recording->state;
                                     $meeting_id = (string) $recording->meetingID;
                                     $meeting_name = (string) $recording->metadata->meetingName;
-                                    $this->logger->warning("Recording processing duration exceeds limit.", compact('domain', 'recording_id', 'recording_state', 'meeting_id', 'meeting_name', 'processing_duration_minutes'));
+                                    $this->logger->warning("Recording processing duration exceeds limit for recording with id $recording_id.", compact('domain', 'recording_id', 'recording_state', 'meeting_id', 'meeting_name', 'processing_duration_minutes'));
                                 }
                             }
                             continue;
@@ -2103,7 +1745,7 @@ class ServersPool
                             $this->logger->info("Server has no recording in 'processing' or 'processed' state. Follow on checks.", ['domain' => $domain]);
                         }
                     } else {
-                        $this->logger->error("Can not retrieve processing recordings information from API.", ['domain' => $domain]);
+                        $this->logger->error("Can not retrieve processing recordings information from API for server $domain.");
                         continue;
                     }
 
@@ -2128,22 +1770,22 @@ class ServersPool
                                 $recording_id = (string) $recording->recordID;
                                 $command_host = "'{ source_size=\$(sudo du -sb $recordings_path_source/$recording_id | cut -f1); echo \$source_size; }'";
                                 if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
-                                    $this->logger->error('Get source (BBB) recording folder size failed with SSH error code ' . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
+                                    $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
                                     continue 2;
                                 } elseif (($source_size = intval($ssh_host->getOutput())) != 0) {
                                     $command_scalelite = "'{ target_size=\$(sudo du -sb $recordings_path_target/$recording_id | cut -f1); echo \$target_size; }'";
                                     if (!$ssh_scalelite->exec($command_host, ['max_tries' => 3])) {
-                                        $this->logger->error('Get target (Scalelite) recording folder size failed with SSH error code ' . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
+                                        $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
                                         continue 2;
                                     } elseif (($target_size = intval($ssh_scalelite->getOutput())) != $source_size) {
-                                        $this->logger->warning('Source (BBB) and target (Scalelite) recording folder sizes do not match. Can not terminate server.', compact('domain', 'recording_id', 'source_size', 'target_size'));
+                                        $this->logger->warning("Source (BBB) and target (Scalelite) recording with id $recording_id folder sizes do not match. Can not terminate server.", compact('domain', 'recording_id', 'source_size', 'target_size'));
                                         continue 2;
                                     } else {
                                         //success case
                                         $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", compact('domain', 'recording_id'));
                                     }
                                 } else {
-                                    $this->logger->warning('Source (BBB) recording folder size is nul. Can not terminate server.', compact('domain', 'recording_id'));
+                                    $this->logger->warning("Source (BBB) recording with id $recording_id folder size is nul. Can not terminate server.", compact('domain', 'recording_id'));
                                     continue 2;
                                 }
                             }
@@ -2152,15 +1794,15 @@ class ServersPool
                             $this->logger->info("Server has no recording in 'published' state. Can terminate.", ['domain' => $domain]);
                         }
                     } else {
-                        $this->logger->error("Can not retrieve 'published' recordings information from API.", ['domain' => $domain]);
+                        $this->logger->error("Can not retrieve 'published' recordings information from API for server $domain.", ['domain' => $domain]);
                         continue;
                     }
 
                 } catch (\RuntimeException $e) {
-                    $this->logger->error("Can not retrieve info from BBB server", ['domain' => $domain, "BBB_api_error" => $e->getMessage()]);
+                    $this->logger->error("Can not retrieve info from BBB server $domain.", ["domain" => $domain, "BBB_api_error" => $e->getMessage()]);
                     continue;
                 } catch (\Exception $e) {
-                    $this->logger->error("Can not retrieve info from BBB server", ['domain' => $domain, "BBB_api_error" => $e->getMessage()]);
+                    $this->logger->error("Can not retrieve info from BBB server $domain", ['domain' => $domain, "BBB_api_error" => $e->getMessage()]);
                     continue;
                 }
 
@@ -2230,7 +1872,6 @@ class ServersPool
         $this->logger->info("End capacity adaptation.");
     }
 
-
     /**
      * Check BBB servers health state and perform repair tasks
      * @param bool $repair Wether servers should be repaired or not. Default true.
@@ -2247,35 +1888,14 @@ class ServersPool
                 $ssh = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
                 $this->logger->info("Restart BBB service.", ["domain" => $domain]);
                 if (!$ssh->exec("bbb-conf --restart", ['max_tries' => 3, 'timeout' => 90])) {
-                    $this->logger->error("Can not restart BBB service.", ["domain" => $domain]);
+                    $this->logger->error("Can not restart BBB service for server $domain.", ["domain" => $domain]);
                 }
             }
         }
     }
 
     /**
-     * Start all servers in pool (for maintenance)
-     **/
-    public function startAllServers() {
-        $this->logger->info('Start all stopped or stopped in place servers.');
-
-        // Gather fresh data
-        if (empty($this->list)) {
-            $this->poll();
-        }
-
-        $stopped_servers = array_merge($this->getlist(['hoster_state' => 'stopped'], false), $this->getlist(['hoster_state' => 'stopped in place'], false));
-        $this->logger->info('Found ' . count($stopped_servers) . " stopped servers.");
-
-        if (!empty($stopped_servers)) {
-            $this->hosterActOnServersList(['action' => 'poweron', 'domains' => array_keys($stopped_servers)]);
-        }
-
-        $this->logger->info('End start all servers.');
-    }
-
-    /**
-     * Start all servers in pool (for maintenance)
+     * Get statistics
      **/
     public function getStatistics()
     {
