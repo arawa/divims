@@ -11,6 +11,8 @@ $config = [
     // SSH commands timeout in seconds
     'ssh_timeout' => 10,
     'hoster_api' => 'SCW',
+    // Bare-metal servers
+    'bare_metal_servers_count' => 0,
 
     /*
      * Capacity adaptation
@@ -38,7 +40,7 @@ $config = [
     // Duration in seconds before discarding data in past load data file
     'load_adaptation_data_file_suffix' => '_loadAdaptationData',
     // Maximum number of participants a server can handle
-    'load_adaptation_server_participants_capacity' => 200,
+    'load_adaptation_server_participants_capacity' => 250,
     // Maximum number of meetings a server can handle
     'load_adaptation_server_meetings_capacity' => 15,
     // Minimum pourcentage of the pool that must be active
