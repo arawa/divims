@@ -37,9 +37,10 @@ class ServersPool
      *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier'
      *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4', 'external_ipv4', 'external_ipv6',
      *  'bbb_status' -> 'OK|KO',
-     *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked), 'hoster_state_duration', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
+     *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked|unreachable), 'hoster_state_duration', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
      *  'divims_state' -> '(active|in maintenance)'
      *  'custom_state' -> 'unresponsive|null'
+     *  'server_type' -> 'virtual machine|bare metal'
      */
     public $list = [];
 
@@ -87,10 +88,10 @@ class ServersPool
 
     /**
      * Poll scalelite pool
-     * @param bool $poll_online_servers Wether to poll online servers for statistics (CPU intensive)
+     * @param bool $poll_running_servers Wether to poll running servers for statistics (CPU intensive)
      * @return array list of servers with data
      */
-    public function poll(bool $poll_online_servers = false)
+    public function poll(bool $poll_running_servers = false)
     {
 
         $this->logger->info("Poll/Gather data for servers");
@@ -98,18 +99,40 @@ class ServersPool
         // Poll Scalelite
         if (!($servers = $this->pollScalelite())) return false;
 
-        // Poll hoster API for servers ids
+        // Poll hoster API for virtual machine servers ids
         $hoster_servers = $this->pollHoster();
-        if ($hoster_servers === false) return false;
-
+        if ($hoster_servers === false and $this->config->get('bare_metal_servers_count') == 0) return false;
         $servers = array_merge_recursive($servers, $hoster_servers);
 
-        // Poll online servers in parallel if required (CPU and time intensive)
-        if ($poll_online_servers) {
-            $online_servers = $this->getFilteredArray($servers, ['hoster_state' => 'running']);
-            if (!empty($online_servers)) {
-                $online_servers = $this->SSHPollBBBServers($online_servers);
-                $servers = array_merge($servers, $online_servers);
+        // Add bare metal servers if any
+        $bare_metal_servers = [];
+        for ($server_number = 1; $server_number <= $this->config->get('bare_metal_servers_count'); $server_number++) {
+            $domain = $this->getServerDomain($server_number);
+            $port = $this->config->get('ssh_port'); 
+            $wait_timeout_seconds = 1; 
+            if($fp = fsockopen($domain, $port, $errCode, $errStr, $wait_timeout_seconds)){   
+                $state = 'running';
+                $this->logger->debug("Bare metal server $domain detected : Reachable by SSH on port $port.", ['domain' => $domain]);
+            } else {
+                $state = 'unreachable';
+                $this->logger->error("SSH unreachable bare metal server $domain detected. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain]);
+            } 
+            fclose($fp);
+            $bare_metal_servers[$domain] = [
+                'hoster_state' => $state,
+                'hoster_state_duration' => 600, // 600 is big enough for further "online" tests
+                'server_type' => 'bare metal',
+            ];
+        }
+        $servers = array_merge_recursive($servers, $bare_metal_servers);
+
+
+        // Poll running servers in parallel if required (CPU and time intensive)
+        if ($poll_running_servers) {
+            $running_servers = $this->getFilteredArray($servers, ['hoster_state' => 'running']);
+            if (!empty($running_servers)) {
+                $running_servers = $this->SSHPollBBBServers($running_servers);
+                $servers = array_merge($servers, $running_servers);
             }
         }
 
@@ -149,13 +172,17 @@ class ServersPool
 
             // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
-                $this->logger->warning("Unresponsive server $domain detected. Tag server as 'unresponsive'. Server will be powered off.", ['domain' => $domain, 'bbb_status' => $bbb_status]);
+                if ($v['server_type'] == 'bare metal') {
+                    $this->logger->error("Unresponsive bare metal server $domain detected. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status]);
+                } else {
+                    $this->logger->error("Unresponsive virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
+                }
                 $servers[$domain]['custom_state'] = 'unresponsive';
             }
 
             // Warn about servers when BBB malfunctions
             if ($v['hoster_state'] == 'running' and $v['bbb_status'] == 'KO' and $v['hoster_state_duration'] >= 120) {
-                $this->logger->warning("BBB server $domain malfunction detected. Check required.", ['domain' => $domain, 'scalelite_status' => $v['scalelite_status']]);
+                $this->logger->warning("BBB server $domain malfunction detected. Check required.", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status']]);
             }
 
         }
@@ -166,9 +193,10 @@ class ServersPool
     /**
      * Get the list of servers with an optional filter
      * @param array $filter An array of pairs keys values e.g. array('scalelite_state' => 'enabled'). Logical 'and' between values.
-     * @param bool $exclude_maintenance Wether exclude servers in maintenance from the list or not
+     * @param bool $exclude_maintenance Whether to exclude servers in maintenance from the list or not
+     * @param bool $exclude_bare_metal Whether to exclude bare metal servers from the list or not
      */
-    public function getList(array $filter = [], bool $exclude_maintenance = true)
+    public function getList(array $filter = [], bool $exclude_maintenance = true, bool $exclude_bare_metal = true)
     {
         $list = $this->list;
 
@@ -180,6 +208,16 @@ class ServersPool
                 }
             }
         }
+
+        // Default : exclude bare metal (physic) servers in maintenance (value set in poll() function)
+        if ($exclude_bare_metal) {
+            foreach ($list as $domain => $v) {
+                if ($v['server_type'] == 'bare metal') {
+                    unset($list[$domain]);
+                }
+            }
+        }
+
         return $this->getFilteredArray($list, $filter);
     }
 
@@ -623,6 +661,7 @@ class ServersPool
                             'hoster_maintenances' => $server['maintenances'],
                             'hoster_public_ip' => $server['public_ip']['address'],
                             'hoster_private_ip' => $server['private_ip'],
+                            'server_type' => 'virtual machine',
                         ];
                     }
                     return $server_data;
@@ -1325,9 +1364,17 @@ class ServersPool
         }
         $load_data_file = $this->config->get('base_directory') . '/tmp/' . $this->config->get('project') . $this->config->get('load_adaptation_data_file_suffix') . '.json';
 
-        $potential_active_servers = $this->getList(['scalelite_state' => 'enabled']);
+        // INclude bare metal servers in the list
+        $potential_active_servers = $this->getList(['scalelite_state' => 'enabled'], true, false);
         $potential_active_servers_count = count($potential_active_servers);
-        $active_servers_minimum_count = intval(ceil($this->config->get('pool_size') * $this->config->get('load_adaptation_active_servers_minimum_ratio')));
+
+        if ($this->config->get('bare_metal_servers_count') > 0) {
+            //Only keep bare metal servers alive at minimum
+            $active_servers_minimum_count = $this->config->get('bare_metal_servers_count');
+        } else {
+            //Minimum number of virtual machines servers to keep alive is a percentage of the pool size
+            $active_servers_minimum_count = intval(ceil($this->config->get('pool_size') * $this->config->get('load_adaptation_active_servers_minimum_ratio')));
+        }
 
         $this->logger->info("Current potential active servers count : $potential_active_servers_count");
 
@@ -1339,9 +1386,11 @@ class ServersPool
 
         $this->logger->info("Current capacity", ['participants_capacity' => $participants_capacity, 'meetings_capacity' => $meetings_capacity]);
 
+        // Compute current load
         $participants_count = 0;
         $meetings_count = 0;
-        foreach($this->getList(['hoster_state' => 'running']) as $domain => $v) {
+        // Include bare meral server in load computing
+        foreach($this->getList(['hoster_state' => 'running'], true, false) as $domain => $v) {
             $participants_count += intval($v['users']);
             $meetings_count += intval($v['meetings']);
         }
@@ -1439,6 +1488,7 @@ class ServersPool
 
 
         $current_active_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running']);
+        $current_active_bare_metal_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'server_type' => 'bare metal'], true, false);
         $soon_active_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'starting']);
         //$potential_active_servers = array_merge($current_active_servers, $soon_active_servers);
         $potential_active_servers = $this->getList(['scalelite_state' => 'enabled']);
@@ -1458,9 +1508,11 @@ class ServersPool
         }
 
         $potential_active_servers_count = count($potential_active_servers);
-        $this->logger->info("Current active (running and enabled in Scalelite) servers count: " . count($current_active_servers));
-        $this->logger->info("Soon active (starting and enabled in Scalelite) servers count: " . count($soon_active_servers));
-        $this->logger->info("Potential active (enabled in Scalelite) servers count: " . count($potential_active_servers));
+        $current_active_bare_metal_servers_count = count($current_active_bare_metal_servers);
+        $this->logger->info("Current active (running and enabled in Scalelite) virtual machines servers count: " . count($current_active_servers));
+        $this->logger->info("Current active (running and enabled in Scalelite) bare metal servers count: $current_active_bare_metal_servers_count");
+        $this->logger->info("Soon active (starting and enabled in Scalelite) virtual machines servers count: " . count($soon_active_servers));
+        $this->logger->info("Potential active (enabled in Scalelite) virtual machine servers count: $potential_active_servers_count");
 
         if ($next_active_servers_count > 0) { //$next_capacity=-1 if no change in case of schedule policy
 
@@ -1469,7 +1521,7 @@ class ServersPool
              */
 
             $this->logger->info("Next required active servers count: $next_active_servers_count");
-            $server_difference_count = $next_active_servers_count - $potential_active_servers_count;
+            $server_difference_count = $next_active_servers_count - $potential_active_servers_count - $current_active_bare_metal_servers_count;
             $this->logger->info("Server difference count : $server_difference_count");
             if ($next_active_servers_count > $this->config->get('pool_size')) {
                 $this->logger->warning("Next active servers count exceeds pool size. Limit to Pool size: " . $this->config->get('pool_size') . " servers");
@@ -1907,28 +1959,28 @@ class ServersPool
         }
 
         echo "== Hoster ==\n";
-        $states = ['running', 'stopped', 'stopped in place', 'starting', 'stopping', 'locked'];
+        $states = ['running', 'stopped', 'stopped in place', 'starting', 'stopping', 'locked', 'unreachable'];
         foreach ($states as $state) {
-            $servers_list = array_keys($this->getList(['hoster_state' => $state], false));
+            $servers_list = array_keys($this->getList(['hoster_state' => $state], false, false));
             echo "* $state: " . count($servers_list) . " [" . implode(',', $this->getServerNumbersFromDomainsList($servers_list)) .  "]\n";
         }
 
         echo "== Scalelite ==\n";
         $states = ['online', 'offline'];
         foreach ($states as $state) {
-            $servers_list = array_keys($this->getList(['scalelite_status' => $state], false));
+            $servers_list = array_keys($this->getList(['scalelite_status' => $state], false, false));
             echo "* $state: " . count($servers_list) . " [" . implode(',', $this->getServerNumbersFromDomainsList($servers_list)) . "]\n";
         }
         $states = ['enabled', 'disabled', 'cordoned'];
         foreach ($states as $state) {
-            $servers_list = array_keys($this->getList(['scalelite_state' => $state], false));
+            $servers_list = array_keys($this->getList(['scalelite_state' => $state], false, false));
             echo "* $state: " . count($servers_list) . " [" . implode(',', $this->getServerNumbersFromDomainsList($servers_list)) . "]\n";
         }
 
         echo "== Divims Maintenance ==\n";
         $states = ['in maintenance'];
         foreach ($states as $state) {
-            $servers_list = array_keys($this->getList(['divims_state' => $state], false));
+            $servers_list = array_keys($this->getList(['divims_state' => $state], false, false));
             echo "* $state: " . count($servers_list) . " [" . implode(',', $this->getServerNumbersFromDomainsList($servers_list)) . "]\n";
         }
 
