@@ -15,6 +15,8 @@ A CRON job launches a Docker container every 5 minutes (recommended). This conta
 - Acts on Scalelite to enable, drain or disable BBB servers
 - Sends warnings and alerts to an email address
 
+You'll find a presentation of DiViM-S at BBB World 2022 on Youtube : https://www.youtube.com/watch?v=S35ZNiOtaek
+
 ## Requirements
 
 You should install these dependancies :
