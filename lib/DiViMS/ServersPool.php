@@ -957,7 +957,7 @@ class ServersPool
             //print_r( $result );
         }
 
-        if (isset($data['cname_domain_name'])) {
+        if (isset($server_data['cname_domain_name'])) {
             // Create domain CNAME record
             $subdomain = $server_data['cname_domain_name'];
             $target = $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain') . $this->config->get('clone_dns_entry_zone') . '.';
