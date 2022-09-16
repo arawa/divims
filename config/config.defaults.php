@@ -10,9 +10,12 @@ $config = [
     'clone_max_workers' => 5,
     // SSH commands timeout in seconds
     'ssh_timeout' => 10,
+    // Virtual machine hoster API
     'hoster_api' => 'SCW',
     // Bare-metal servers
     'bare_metal_servers_count' => 0,
+    // Time To Life (TTL) of newly created DNS A records in seconds
+    'clone_dns_entry_A_record_ttl' => 300,
 
     /*
      * Capacity adaptation

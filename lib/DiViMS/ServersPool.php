@@ -902,6 +902,9 @@ class ServersPool
                     $result = $this->hoster_api->actOnServer($server_id, ['action' => $action]);
                     if ($result) {
                         $success_list[] = $this->getServerNumberFromHostname($server['name']);
+                        if ($action == 'terminate' and $this->config->get('clone_dns_create_entry')) {
+                            $this->deleteDNSRecordOVH(['hostname' => $server['name']])
+                        }
                         continue;
                     }
                     usleep(200000);
@@ -916,13 +919,13 @@ class ServersPool
     }
 
     /**
-     * Create DNS entries for the new VM
+     * Create DNS records for the new VM
      * A and AAAA record for the server
      * CNAME record for the domain, pointing to the server
      * 
-     * @param array $data An array containing DNS data of the newly created VM ['hostname', 'external_ipv4', 'external_ipv6']
+     * @param array $data An array containing DNS data of the newly created VM ['hostname', 'external_ipv4', 'external_ipv6' (optional), 'cname_domain_name' (optional)]
      **/
-    public function createDNSEntriesOVH(array $server_data)
+    public function createDNSRecordsOVH(array $server_data)
     {
         $ovh = new Api(
             $this->config->get('ovh_application_key'),
@@ -931,19 +934,18 @@ class ServersPool
             $this->config->get('ovh_consumer_key')
         );
 
-        //$result = $ovh->get('/domain/zone');
+        $zone = $this->config->get('clone_dns_entry_zone');
 
         // Create server A record
         $subdomain = $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain');
         $target = $server_data['external_ipv4'];
-        $this->logger->info("Create A record", ['source' => $subdomain . '.' . $this->config->get('clone_dns_entry_zone'), 'target' => $target]);
-        $result = $ovh->post('/domain/zone/' . $this->config->get('clone_dns_entry_zone') . '/record', array(
+        $this->logger->info("Create A record", ['source' => "$subdomain.$zone", 'target' => $target]);
+        $ovh->post("/domain/zone/$zone/record", array(
             'fieldType' => 'A', // Resource record Name (type: zone.NamedResolutionFieldTypeEnum)
             'subDomain' => $subdomain, // Resource record subdomain (type: string)
             'target' => $target, // Resource record target (type: string)
-            'ttl' => NULL, // Resource record ttl (type: long)
+            'ttl' => $this->config->get('clone_dns_entry_A_record_ttl'), // Resource record ttl (type: long)
         ));
-        //print_r( $result );
 
         if ($this->config->get('clone_dns_create_ipv6')) {
             // Create server AAAA record
@@ -960,22 +962,60 @@ class ServersPool
         if (isset($server_data['cname_domain_name'])) {
             // Create domain CNAME record
             $subdomain = $server_data['cname_domain_name'];
-            $target = $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain') . $this->config->get('clone_dns_entry_zone') . '.';
-            $this->logger->info("Create CNAME record", ['source' => $subdomain . '.' . $this->config->get('clone_dns_entry_zone'), 'target' => $target]);
-            $result = $ovh->post('/domain/zone/' . $this->config->get('clone_dns_entry_zone') . '/record', array(
+            $target = $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain') . $zone . '.';
+            $this->logger->info("Create CNAME record", ['source' => "$subdomain.$zone", 'target' => $target]);
+            $ovh->post("/domain/zone/$zone/record", array(
                 'fieldType' => 'CNAME', // Resource record Name (type: zone.NamedResolutionFieldTypeEnum)
                 'subDomain' => $subdomain, // Resource record subdomain (type: string)
                 'target' =>  $target, // Resource record target (type: string)
                 'ttl' => NULL, // Resource record ttl (type: long)
             ));
-            //print_r( $result );
         }
 
         //Refresh the zone
-        $this->logger->info("Refresh zone and wait 5 seconds for zone to be updated");
-        $result = $ovh->post('/domain/zone/'  . $this->config->get('clone_dns_entry_zone') . '/refresh');
-        sleep(5);
+        $this->logger->info("Refresh DNS zone.");
+        $ovh->post("/domain/zone/$zone/refresh");
     }
+
+    /**
+     * delete DNS A record
+     * @param array $data An array containing DNS data of the newly created VM ['hostname']
+     **/
+    public function deleteDNSRecordOVH(array $server_data)
+    {
+        $ovh = new Api(
+            $this->config->get('ovh_application_key'),
+            $this->config->get('ovh_application_secret'),
+            $this->config->get('ovh_endpoint'),
+            $this->config->get('ovh_consumer_key')
+        );
+
+        $zone = $this->config->get('clone_dns_entry_zone');
+
+        // Get A record ID
+        $subdomain = $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain');
+        $this->logger->debug("Get 'A' record ID.", ['domain' => "$subdomain.$zone"]);
+        $result = $ovh->get("/domain/zone/$zone/record", [
+            'fieldType' => 'A', // Resource record Name (type: zone.NamedResolutionFieldTypeEnum)
+            'subDomain' => $subdomain, // Resource record subdomain (type: string)
+        ]);
+
+        if (isset($result[0]) and count($result) == 1) {
+            $record_id = $result[0];
+            // Delete server A record
+            $this->logger->info("Delete A record.", ['domain' => "$subdomain.$zone", 'record_id' => $record_id]);
+            $ovh->delete("/domain/zone/$zone/record/$record_id");
+
+            //Refresh the zone
+            $this->logger->info("Refresh DNS zone");
+            $ovh->post("/domain/zone/$zone/refresh");
+            return true;
+        } else {
+            $this->logger->warning("Cand not find A record for deletion.", ['domain' => "$subdomain.$zone"]);
+            return false;
+        }
+    }
+
 
     /**
      * Add a server to the pool by cloning a backed up image
@@ -992,20 +1032,26 @@ class ServersPool
         $hostname = $this->getHostname($server_number);
         $domain = $this->getServerDomain($server_number);
 
-        $this->logger->info("Start cloning new VM.", compact('hostname', 'domain'));
+        $this->logger->info("Start cloning new VM $hostname.", compact('hostname', 'domain'));
 
         if ($this->config->get('hoster_api') == 'SCW') {
-            // Retrieve server IP
-            $external_ipv4 = shell_exec("getent hosts $domain | cut -d' ' -f1");
-            $external_ipv4 = preg_replace("/\r\n|\r|\n/", '', $external_ipv4);
-            $hoster_ip = $this->hoster_api->getIP($external_ipv4);
-            if (isset($hoster_ip['ip']['id'])) {
-                $hoster_ip_id = $hoster_ip['ip']['id'];
+
+            if ($this->config->get('clone_dns_create_entry')) {
+                $dynamic_ip_required = true;
             } else {
-                $this->logger->error("Can not retrieve IP at hoster for server $domain", ['domain' => $domain, 'IP' => $external_ipv4]);
-                return false;
+                // Retrieve existing server IP
+                $external_ipv4 = shell_exec("getent hosts $domain | cut -d' ' -f1");
+                $external_ipv4 = preg_replace("/\r\n|\r|\n/", '', $external_ipv4);
+                $hoster_ip = $this->hoster_api->getIP($external_ipv4);
+                if (isset($hoster_ip['ip']['id'])) {
+                    $hoster_ip_id = $hoster_ip['ip']['id'];
+                } else {
+                    $this->logger->error("Can not retrieve IP at hoster for server $domain.", compact('domain', 'external_ipv4'));
+                    return false;
+                }
+                $dynamic_ip_required = false;
             }
-            
+
             // Retrieve image id
             $result = $this->hoster_api->getImages(['name' => $this->config->get('clone_image_name')]);
             if (isset($result['images'])) {
@@ -1019,7 +1065,7 @@ class ServersPool
             // Create New instance
             $server_spec = [
                 "name" => $hostname,
-                "dynamic_ip_required" => false,
+                "dynamic_ip_required" => $dynamic_ip_required,
                 "enable_ipv6" => true,
                 "commercial_type" => $this->config->get('clone_commercial_type'),
                 "image" => "$image_id",
@@ -1033,27 +1079,44 @@ class ServersPool
             ];
 
             $tries = 0;
+            $server = [];
             $server_id = '';
             while (true) {
                 $tries++;
                 $result = $this->hoster_api->createServer($server_spec);
                 if (isset($result['server']['id'])) {
-                    $server_id = $result['server']['id'];
-                    $this->logger->info("Server created", ['hostname' => $hostname, 'server_id' => $server_id]);
+                    $server = $result['server'];
+                    $server_id = $server['id'];
+                    $this->logger->info("Server $hostname created.", ['server_id' => $server_id]);
                     break;
                 } elseif ($tries == 3) {
-                    $this->logger->error("Server $hostname creation error : $tries failed tentatives. Aborting.", ['hostname' => $hostname, "api_message" => print_r($result, true)]);
+                    $this->logger->error("Server $hostname creation error : $tries failed tentatives. Aborting.", ["api_message" => print_r($result, true)]);
                     return false;
                 }
                 sleep(1);
             }
 
-            // Attach the existing IP to the newly cloned server
-            $this->logger->info("Attach IP to cloned server", ['hostname' => $hostname, "external_ipv4" => $external_ipv4]);
-            $result = $this->hoster_api->updateIP($hoster_ip_id, ['server' => $server_id]);
-            if (!isset($result['ip']['server']['id']) or $result['ip']['server']['id'] != $server_id) {
-                $this->logger->error("Attach IP to cloned server $hostname failed. Aborting.", ['hostname' => $hostname, "external_ipv4" => $external_ipv4, "api_message" => print_r($result, true)]);
-                return false;
+            $server_data = [
+                'external_ipv4' => $external_ipv4 ?? $server['public_ip']['address'],
+                'hostname' => $hostname,
+                'domain' => $domain,
+                'hoster_id' => $server_id,
+            ];
+
+            if ($this->config->get('clone_dns_create_entry')) {
+                // a new IP has just been attached to the newly cloned server
+                // Create DNS entry for this IP
+                if ($this->config->get('clone_dns_entry_api') == 'OVH') {
+                    $this->createDNSRecordsOVH($server_data);
+                }
+            } else {
+                // Attach the formerly existing IP to the newly cloned server
+                $this->logger->info("Attach IP to cloned server $hostname.", ["external_ipv4" => $external_ipv4]);
+                $result = $this->hoster_api->updateIP($hoster_ip_id, ['server' => $server_id]);
+                if (!isset($result['ip']['server']['id']) or $result['ip']['server']['id'] != $server_id) {
+                    $this->logger->error("Attach IP to cloned server $hostname failed. Aborting.", ["external_ipv4" => $external_ipv4, "api_message" => print_r($result, true)]);
+                    return false;
+                }
             }
 
             //poweron server
@@ -1064,12 +1127,7 @@ class ServersPool
                 return false;
             }
 
-            return [
-                'external_ipv4' => $external_ipv4,
-                'hostname' => $hostname,
-                'domain' => $domain,
-                'hoster_id' => $server_id,
-            ];
+            return $server_data;
         }
  
     }
