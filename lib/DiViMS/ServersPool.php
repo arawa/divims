@@ -903,7 +903,7 @@ class ServersPool
                     if ($result) {
                         $success_list[] = $this->getServerNumberFromHostname($server['name']);
                         if ($action == 'terminate' and $this->config->get('clone_dns_create_entry')) {
-                            $this->deleteDNSRecordOVH(['hostname' => $server['name']])
+                            $this->deleteDNSRecordOVH(['hostname' => $server['name']]);
                         }
                         continue;
                     }
