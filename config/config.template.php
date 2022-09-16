@@ -13,11 +13,6 @@ $config = array(
   'scw_organization_id' => '',
   'scw_project_id' => '',
 
-  'zabbix_api_url' => 'https://zabbix.example.com/api_jsonrpc.php',
-  'zabbix_username' => '',
-  'zabbix_password' => '',
-
-
   // Log level used by the application
   'log_level' => \Monolog\Logger::INFO,
 
