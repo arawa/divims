@@ -1922,6 +1922,7 @@ class ServersPool
             }
         }
         $this->logger->info("End capacity adaptation.");
+		$this->logger->info("             ===             ");
     }
 
     /**
