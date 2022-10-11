@@ -1032,12 +1032,27 @@ class ServersPool
         $hostname = $this->getHostname($server_number);
         $domain = $this->getServerDomain($server_number);
 
+        $server_data = [
+            'hostname' => $hostname,
+            'domain' => $domain,
+            'hoster_id' => $server_id,
+        ];
+
         $this->logger->info("Start cloning new VM $hostname.", compact('hostname', 'domain'));
 
         if ($this->config->get('hoster_api') == 'SCW') {
 
             if ($this->config->get('clone_dns_create_entry')) {
-                $dynamic_ip_required = true;
+                //Reserve new IP
+                $hoster_ip = $this->hoster_api->reserveIP();
+                if (isset($hoster_ip['ip']['id'])) {
+                    $hoster_ip_id = $hoster_ip['ip']['id'];
+                    $external_ipv4 = $hoster_ip['ip']['address'];
+                    $this->logger->info("Successfully reserved IP at hoster for server $domain.", compact('domain', 'external_ipv4', 'hoster_ip_id'));
+                } else {
+                    $this->logger->error("Can not reserve IP at hoster for server $domain.", compact('domain', 'external_ipv4'));
+                    return false;
+                }
             } else {
                 // Retrieve existing server IP
                 $external_ipv4 = shell_exec("getent hosts $domain | cut -d' ' -f1");
@@ -1045,12 +1060,14 @@ class ServersPool
                 $hoster_ip = $this->hoster_api->getIP($external_ipv4);
                 if (isset($hoster_ip['ip']['id'])) {
                     $hoster_ip_id = $hoster_ip['ip']['id'];
+                    $this->logger->info("Successfully retrieved IP at hoster for server $domain.", compact('domain', 'external_ipv4', 'hoster_ip_id'));
                 } else {
                     $this->logger->error("Can not retrieve IP at hoster for server $domain.", compact('domain', 'external_ipv4'));
                     return false;
                 }
-                $dynamic_ip_required = false;
             }
+
+            $server_data['external_ipv4'] = $external_ipv4;
 
             // Retrieve image id
             $result = $this->hoster_api->getImages(['name' => $this->config->get('clone_image_name')]);
@@ -1065,7 +1082,7 @@ class ServersPool
             // Create New instance
             $server_spec = [
                 "name" => $hostname,
-                "dynamic_ip_required" => $dynamic_ip_required,
+                "dynamic_ip_required" => false,
                 "enable_ipv6" => true,
                 "commercial_type" => $this->config->get('clone_commercial_type'),
                 "image" => "$image_id",
@@ -1091,17 +1108,16 @@ class ServersPool
                     break;
                 } elseif ($tries == 3) {
                     $this->logger->error("Server $hostname creation error : $tries failed tentatives. Aborting.", ["api_message" => print_r($result, true)]);
+                    if ($this->config->get('clone_dns_create_entry')) {
+                        // Delete newly created IP
+                        $this->hoster_api->deleteIP($hoster_ip_id);
+                    }
                     return false;
                 }
                 sleep(1);
             }
 
-            $server_data = [
-                'external_ipv4' => $external_ipv4 ?? $server['public_ip']['address'],
-                'hostname' => $hostname,
-                'domain' => $domain,
-                'hoster_id' => $server_id,
-            ];
+            $server_data['hoster_id'] = $server_id;
 
             if ($this->config->get('clone_dns_create_entry')) {
                 // a new IP has just been attached to the newly cloned server
@@ -1110,7 +1126,7 @@ class ServersPool
                     $this->createDNSRecordsOVH($server_data);
                 }
             } else {
-                // Attach the formerly existing IP to the newly cloned server
+                // Attach the existing IP to the newly cloned server
                 $this->logger->info("Attach IP to cloned server $hostname.", ["external_ipv4" => $external_ipv4]);
                 $result = $this->hoster_api->updateIP($hoster_ip_id, ['server' => $server_id]);
                 if (!isset($result['ip']['server']['id']) or $result['ip']['server']['id'] != $server_id) {

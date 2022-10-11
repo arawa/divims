@@ -16,6 +16,11 @@ $config = [
     'bare_metal_servers_count' => 0,
     // Time To Life (TTL) of newly created DNS A records in seconds
     'clone_dns_entry_A_record_ttl' => 300,
+    // Domain name for DNS entries
+    'clone_dns_create_entry' => false,
+    'clone_dns_create_ipv6' => false,
+    'clone_dns_entry_api' => 'OVH', //Choice between (OVH)
+    'clone_dns_create_cname' => false,
 
     /*
      * Capacity adaptation

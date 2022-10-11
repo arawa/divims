@@ -273,8 +273,10 @@ class SCW {
     return $this->post("/servers/", $post_data);
   }
 
-  public function reserveIP(array $post_data) {
-    return $this->post("/ips/", $post_data);
+  public function reserveIP(array $params = []) {
+    $default_params = ['project' => $this->config->get('scw_project_id')];
+    $params = array_merge($params, $default_params);
+    return $this->post("/ips/", $params);
   }
 
   public function updateIP(string $ip_id, array $post_data) {
