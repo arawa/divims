@@ -1,7 +1,8 @@
 # DiViM-S
-Opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/) and [Scalelite](https://github.com/blindsidenetworks/scalelite)
 
-Allows scaling your BBB infrastructure according to the observed load or a forecasted schedule and simultaneously reducing your hosting costs.
+DiViM-S (or divims) is an opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/) and [Scalelite](https://github.com/blindsidenetworks/scalelite)
+
+It allows scaling your BBB infrastructure according to the observed load or a forecasted schedule and simultaneously reducing your hosting costs.
 
 Currently compatible with [Scaleway](https://www.scaleway.com) hosting.
 
