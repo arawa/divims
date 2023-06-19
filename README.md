@@ -6,11 +6,9 @@ It allows scaling your BBB infrastructure according to the observed load or a fo
 
 Currently compatible with [Scaleway](https://www.scaleway.com) hosting.
 
-<div style="margin:auto; display:block">
-
-![Divims visual explanation](https://www.arawa.fr/wp-content/uploads/2023/06/presentation-arawa-divims.png.webp)
-
-</div>
+<p align="center">
+<img src="https://www.arawa.fr/wp-content/uploads/2023/06/presentation-arawa-divims.png.webp" alt="Divims visual explanation">
+</p>
 
 ## How it works
 A CRON job launches a Docker container every 5 minutes (recommended). This container runs a PHP7 app that connects to your Scalelite's pool :
@@ -69,5 +67,4 @@ $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
 ## Sponsors
 
-<img src="https://www.education.gouv.fr/sites/default/files/site_logo/2022-08/logoMENJ_tronque.png" width="100"> Ministère de l'Éducation Nationale française <a href="https://www.education.gouv.fr/direction-du-numerique-pour-l-education-dne-9983" alt="Site de la Direction du Numérique pour l'Éducation">Direction du Numérique pour l'Éducation</a>
-
+<a href="https://www.education.gouv.fr/direction-du-numerique-pour-l-education-dne-9983" alt="Site de la Direction du Numérique pour l'Éducation"><img src="https://www.education.gouv.fr/sites/default/files/site_logo/2022-08/logoMENJ_tronque.png" width="100"> Ministère de l'Éducation Nationale française (Direction du Numérique pour l'Éducation)</a>
