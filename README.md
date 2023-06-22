@@ -1,4 +1,4 @@
-# ![DiViMS logo](https://www.arawa.fr/wp-content/uploads/2022/11/logo-divims-1-90x90.png.webp) DiViMS 
+# ![DiViMS logo](https://www.arawa.fr/wp-content/uploads/2022/11/logo-divims-1-90x90.png.webp) DiViMS a BigBlueButton autoscaler
 
 DiViMS (or divims) is an opensource autoscaler for [BigBlueButton](https://docs.bigbluebutton.org/) and [Scalelite](https://github.com/blindsidenetworks/scalelite)
 
