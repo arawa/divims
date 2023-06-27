@@ -27,7 +27,6 @@ You should install these dependancies :
 
 - docker-ce
 
-
 ## How to run
 ### Build the required docker image
 
@@ -64,6 +63,12 @@ Example :
 ```php
 $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 ```
+
+## Additional Help
+
+If you need assistance, require a further development (such as develop compatibility with your preferd cloud), you can contact Arawa to learn about professional services to support your project.
+
+Please visit [project page on Arawa's website](https://www.arawa.fr/solutions/produits-arawa/arawa-divims-for-bigbluebutton/) (French content) or [contact us](https://www.arawa.fr/contact/).
 
 ## Sponsors
 
