@@ -1,8 +1,8 @@
-# ![DiViMS logo](https://www.arawa.fr/wp-content/uploads/2022/11/logo-divims-1-90x90.png.webp) DiViMS - a BigBlueButton autoscaler
+# ![DiViMS logo](https://www.arawa.fr/wp-content/uploads/2022/11/logo-divims-1-90x90.png.webp) DiViMS - a BigBlueButton orchestrator
 
-DiViMS (or divims) is an opensource autoscaler for [BigBlueButton](https://docs.bigbluebutton.org/) and [Scalelite](https://github.com/blindsidenetworks/scalelite)
+DiViMS (or divims) is an opensource orchestrator for [BigBlueButton](https://docs.bigbluebutton.org/) and [Scalelite](https://github.com/blindsidenetworks/scalelite)
 
-It allows scaling your BBB infrastructure according to the observed load or a forecasted schedule and simultaneously reducing your hosting costs.
+It allows auto-scaling your BBB infrastructure according to the observed load or a forecasted schedule and simultaneously reducing your hosting costs.
 
 Currently compatible with [Scaleway](https://www.scaleway.com) hosting.
 
