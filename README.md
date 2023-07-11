@@ -23,7 +23,10 @@ You'll find a presentation of DiViMS at BBB World 2022 on Youtube : https://www.
 
 ## Requirements
 
-You should install these dependancies :
+DiViM-s requires a pool of BigBlueButton servers managed by a [Scalelite](https://github.com/blindsidenetworks/scalelite) server.
+DiViM-S code can reside on the same server as Scalelite : independence is guaranteed by Docker.
+
+To run DiViM-S you should install these dependencies :
 
 - docker-ce
 
