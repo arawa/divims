@@ -1820,12 +1820,12 @@ class ServersPool
                             $ssh_scalelite = new SSH(['host' => $this->config->get('scalelite_host')], $this->config, $this->logger);
                             foreach($result->getRawXml()->recordings->recording as $recording) {
                                 $recording_id = (string) $recording->recordID;
-                                $command_host = "'{ source_size=\$(sudo du -sb $recordings_path_source/$recording_id | cut -f1); echo \$source_size; }'";
+                                $command_host = "'{ source_size=\$(sudo find $recordings_path_source/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$source_size; }'";
                                 if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
                                     $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
                                     continue 2;
                                 } elseif (($source_size = intval($ssh_host->getOutput())) != 0) {
-                                    $command_scalelite = "'{ target_size=\$(sudo du -sb $recordings_path_target/$recording_id | cut -f1); echo \$target_size; }'";
+                                    $command_scalelite = "'{ target_size=\$(sudo find $recordings_path_target/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$target_size; }'";
                                     if (!$ssh_scalelite->exec($command_host, ['max_tries' => 3])) {
                                         $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
                                         continue 2;
