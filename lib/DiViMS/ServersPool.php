@@ -178,11 +178,24 @@ class ServersPool
                     $this->logger->error("Unresponsive virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
                 }
                 $servers[$domain]['custom_state'] = 'unresponsive';
+            } elseif ($servers[$domain]['uptime'] >= $this->config->get('server_max_recycling_uptime')) {
+              // Alternatively check if server should be recycled due to long uptime
+                if ($v['server_type'] == 'bare metal') {
+                    $this->logger->error("Uptime above limit for bare metal server $domain detected. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status]);
+                } else {
+                    $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
+                    $servers[$domain]['custom_state'] = 'unresponsive';
+                }
             }
 
-            // Warn about servers when BBB malfunctions
+            // Also tag server as unresponsive when BBB malfunctions
             if ($v['hoster_state'] == 'running' and $v['bbb_status'] == 'KO' and $v['hoster_state_duration'] >= 120) {
-                $this->logger->warning("BBB server $domain malfunction detected. Check required.", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status']]);
+                if ($v['server_type'] == 'bare metal') {
+                    $this->logger->error("BBB malfunction detected for bare metal server $domain. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status']]);
+                } else {
+                    $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'unresponsive'.  Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status']]);
+                }
+                $servers[$domain]['custom_state'] = 'unresponsive';
             }
 
         }
@@ -1492,23 +1505,30 @@ class ServersPool
         $soon_active_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'starting']);
         //$potential_active_servers = array_merge($current_active_servers, $soon_active_servers);
         $potential_active_servers = $this->getList(['scalelite_state' => 'enabled']);
+        $current_active_unresponsive_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'unresponsive']);
 
-        // Treat unresponsive servers
-        $unresponsive_servers_to_cordon = [];
-        foreach ($current_active_servers as $domain => $v) {
-            if ($v['custom_state'] == 'unresponsive') {
-                $this->logger->info("Server is unresponsive. Add server to cordon list.", ['domain' => $domain]);
-                $unresponsive_servers_to_cordon[] = $domain;
-                unset($current_active_servers[$domain]);
-                unset($potential_active_servers[$domain]);
+        // Cordon unresponsive servers: they will be terminated
+        // Unless there is only one active online server, in this case we wait until a second server starts and comes online
+        $current_active_online_servers = $this->getList(['scalelite_state' => 'enabled', 'scalelite_status' => 'online', 'hoster_state' => 'running'], true, false);
+        if (count($current_active_online_servers) > 1) {
+            $unresponsive_servers_to_cordon = [];
+            foreach ($current_active_servers as $domain => $v) {
+                if ($v['custom_state'] == 'unresponsive') {
+                    $this->logger->info("Server is unresponsive. Add server to cordon list.", ['domain' => $domain]);
+                    $unresponsive_servers_to_cordon[] = $domain;
+                    unset($current_active_servers[$domain]);
+                    unset($potential_active_servers[$domain]);
+                    unset($current_active_unresponsive_servers[$domain]);
+                }
             }
-        }
-        if (!empty($unresponsive_servers_to_cordon)) {
-            $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $unresponsive_servers_to_cordon]);
+            if (!empty($unresponsive_servers_to_cordon)) {
+                $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $unresponsive_servers_to_cordon]);
+            }
         }
 
         $potential_active_servers_count = count($potential_active_servers);
         $current_active_bare_metal_servers_count = count($current_active_bare_metal_servers);
+        $current_active_unresponsive_servers_count = count($current_active_unresponsive_servers);
         $this->logger->info("Current active (running and enabled in Scalelite) virtual machines servers count: " . count($current_active_servers));
         $this->logger->info("Current active (running and enabled in Scalelite) bare metal servers count: $current_active_bare_metal_servers_count");
         $this->logger->info("Soon active (starting and enabled in Scalelite) virtual machines servers count: " . count($soon_active_servers));
@@ -1521,10 +1541,10 @@ class ServersPool
              */
 
             $this->logger->info("Next required active servers count: $next_active_servers_count");
-            $server_difference_count = $next_active_servers_count - $potential_active_servers_count - $current_active_bare_metal_servers_count;
+            $server_difference_count = $next_active_servers_count - $potential_active_servers_count - $current_active_bare_metal_servers_count + $current_active_unresponsive_servers_count;
             $this->logger->info("Server difference count : $server_difference_count");
             if ($next_active_servers_count > $this->config->get('pool_size')) {
-                $this->logger->warning("Next active servers count exceeds pool size. Limit to Pool size: " . $this->config->get('pool_size') . " servers");
+                $this->logger->error("Next active servers count exceeds pool size. Limit count to pool size: " . $this->config->get('pool_size') . " servers");
                 $next_active_servers_count = $this->config->get('pool_size');
             }
 
@@ -1606,7 +1626,7 @@ class ServersPool
             elseif ($server_difference_count > 0) {
                 $this->logger->info("Adaptation : Raise active servers count by $server_difference_count servers");
 
-                // Disable the required number of servers in Scalelite so that they drain rooms
+                // Enable the required number of servers in Scalelite so that they are started
                 $servers_to_enable_count = 0;
                 $servers_to_enable = [];
 
