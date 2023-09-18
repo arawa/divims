@@ -194,6 +194,8 @@ class ServersPool
                     $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
                     $servers[$domain]['custom_state'] = 'to recycle';
                 }
+            } else {
+                $servers[$domain]['custom_state'] = null; 
             }
 
         }
@@ -1525,7 +1527,7 @@ class ServersPool
         }
 
         // If there are still servers to replace, terminate them if at least a server is fully functional
-        $current_fully_functional_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'scalelite_status' => 'online'], true, false);
+        $current_fully_functional_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'scalelite_status' => 'online', 'custom_state' => null], true, false);
         if ($current_active_servers_count > $current_active_to_replace_servers_count and !empty($current_fully_functional_servers)) {
             foreach ($current_active_to_replace_servers_copy as $domain => $v) {
                 $this->logger->info("Server is due to be terminated. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state']]);
