@@ -1509,8 +1509,8 @@ class ServersPool
 
         // Cordon unresponsive servers: they will be terminated
         // Unless there is only one active online server, in this case we wait until a second server starts and comes online
-        $current_active_online_servers = $this->getList(['scalelite_state' => 'enabled', 'scalelite_status' => 'online', 'hoster_state' => 'running'], true, false);
-        if (count($current_active_online_servers) > 1) {
+        $current_active_fully_functional_servers = $this->getList(['scalelite_state' => 'enabled', 'scalelite_status' => 'online', 'bbb_status' => 'OK', 'hoster_state' => 'running'], true, false);
+        if (count($current_active_fully_functional_servers) >= 1) {
             $unresponsive_servers_to_cordon = [];
             foreach ($current_active_servers as $domain => $v) {
                 if ($v['custom_state'] == 'unresponsive') {
