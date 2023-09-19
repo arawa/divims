@@ -1562,7 +1562,7 @@ class ServersPool
 
         // If there are still servers to replace, terminate them if at least a server is fully functional
         $current_fully_functional_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'scalelite_status' => 'online', 'custom_state' => null], true, false);
-        if (!empty($current_fully_functional_servers)) {
+        if (true) {
             foreach ($current_active_to_replace_servers_copy as $domain => $v) {
                 $this->logger->info("Server is due to be terminated. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state']]);
                 $to_terminate_servers[] = $domain;
