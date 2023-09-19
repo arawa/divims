@@ -1568,6 +1568,7 @@ class ServersPool
         // But keep one server alive in case the number of server to replaces matches the number of online servers
         //$current_fully_functional_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'scalelite_status' => 'online', 'custom_state' => null], true, false);
         if (count($current_active_to_replace_servers_copy) == $current_active_online_servers_count) {
+            $server_to_keep = [];
             if (count($current_active_to_recycle_servers) >= 1 ) {
                 // Preferably keep a server to recycle
                 $server_to_keep = array_pop($current_active_to_recycle_servers);
