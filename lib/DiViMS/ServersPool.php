@@ -212,7 +212,7 @@ class ServersPool
      * @param int $sec Number of seconds to convert
      * @return string The readable duration
      */
-    private function convertSecToTime(int $sec)
+    private function convertSecToTime(int $secs)
     {
         if (!$secs = (int)$secs)
             return '0 seconds';
