@@ -1550,7 +1550,6 @@ class ServersPool
         $current_active_to_recycle_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'to recycle']);
 
         $current_active_to_replace_servers = array_merge($current_active_unresponsive_servers, $current_active_malfunctioning_servers, $current_active_to_recycle_servers);
-        $current_active_to_replace_servers_count = count($current_active_to_replace_servers);
 
         // Unconditionnaly terminate 'unresponsive' servers
         $to_terminate_servers = [];
@@ -1573,6 +1572,7 @@ class ServersPool
         if (!empty($to_terminate_servers)) {
             $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $to_terminate_servers]);
         }
+        $current_active_to_replace_servers_count = count($current_active_to_replace_servers_copy);
 
         $this->logger->info("Current active (running and enabled in Scalelite) virtual machines servers count: " . count($current_active_servers));
         $this->logger->info("Current active (running and enabled in Scalelite) bare metal servers count: $current_active_bare_metal_servers_count");
