@@ -1536,10 +1536,10 @@ class ServersPool
 
 
         $current_active_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running']);
-        $current_active_servers_count = count($current_active_servers);
+        //$current_active_servers_count = count($current_active_servers);
 
         $current_active_online_servers = $this->getList(['scalelite_state' => 'enabled', 'scalelite_status' => 'online', 'hoster_state' => 'running']);
-        $current_active_online_servers_count = count($current_active_online_servers);
+        //$current_active_online_servers_count = count($current_active_online_servers);
 
         $current_active_bare_metal_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'server_type' => 'bare metal'], true, false);
         $current_active_bare_metal_servers_count = count($current_active_bare_metal_servers);
@@ -1560,14 +1560,15 @@ class ServersPool
         foreach ($current_active_unresponsive_servers as $domain => $v) {
             $this->logger->info("Unresponsive server due to be terminated. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state']]);
             $to_terminate_servers[] = $domain;
+            unset($current_active_servers[$domain]);
             unset($potential_active_servers[$domain]);
             unset($current_active_to_replace_servers_copy[$domain]);
         }
 
-        // If there are still servers to replace, terminate them
-        // But keep one server alive in case the number of server to replaces matches the number of online servers
-        //$current_fully_functional_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'scalelite_status' => 'online', 'custom_state' => null], true, false);
-        if (count($current_active_to_replace_servers_copy) == $current_active_online_servers_count) {
+        // If there are still servers to replace, terminate them all
+        // But keep one server alive in case the number of server to replace matches the number of online servers
+        $additional_servers_to_enable_count = 0;
+        if (count($current_active_to_replace_servers_copy) == count($current_active_online_servers)) {
             if (count($current_active_to_recycle_servers) >= 1 ) {
                 // Preferably keep a server to recycle
                 $server_data = end($current_active_to_recycle_servers);
@@ -1579,20 +1580,23 @@ class ServersPool
             }
 
             $this->logger->info("Server is due to be terminated but we keep it as the only active online server.", ['domain' => $domain, 'custom_state' => $server_data['custom_state']]);
-            unset($potential_active_servers[$domain]);
+            // Start a new machine in advance to replace that one
+            $additional_servers_to_enable_count = 1;
+            // Remove server from the list of servers to be replaced
             unset($current_active_to_replace_servers_copy[$domain]);
         }
         // Tag all other servers to replace to be terminated
         foreach ($current_active_to_replace_servers_copy as $domain => $v) {
             $this->logger->info("Server is due to be terminated. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state']]);
             $to_terminate_servers[] = $domain;
+            unset($current_active_servers[$domain]);
             unset($potential_active_servers[$domain]);
             unset($current_active_to_replace_servers_copy[$domain]);
         }
         if (!empty($to_terminate_servers)) {
             $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $to_terminate_servers]);
         }
-
+        // Update the number of potential active servers
         $potential_active_servers_count = count($potential_active_servers);
 
         $this->logger->info("Current active (running and enabled in Scalelite) virtual machines servers count: " . count($current_active_servers));
@@ -1608,7 +1612,7 @@ class ServersPool
              */
 
             $this->logger->info("Next required active servers count: $next_active_servers_count");
-            $server_difference_count = $next_active_servers_count - $potential_active_servers_count - $current_active_bare_metal_servers_count;
+            $server_difference_count = $next_active_servers_count - $potential_active_servers_count - $current_active_bare_metal_servers_count + $additional_servers_to_enable_count;
             $this->logger->info("Server difference count : $server_difference_count");
             if ($next_active_servers_count > $this->config->get('pool_size')) {
                 $this->logger->error("Next active servers count exceeds pool size. Limit count to pool size: " . $this->config->get('pool_size') . " servers");
