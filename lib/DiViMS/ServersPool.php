@@ -1568,16 +1568,17 @@ class ServersPool
         // But keep one server alive in case the number of server to replaces matches the number of online servers
         //$current_fully_functional_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'scalelite_status' => 'online', 'custom_state' => null], true, false);
         if (count($current_active_to_replace_servers_copy) == $current_active_online_servers_count) {
-            $server_to_keep = [];
             if (count($current_active_to_recycle_servers) >= 1 ) {
                 // Preferably keep a server to recycle
-                $server_to_keep = array_pop($current_active_to_recycle_servers);
+                $server_data = end($current_active_to_recycle_servers);
+                $domain = key($current_active_to_recycle_servers);
             } else {
                 // Else keep a malfunctioning server
-                $server_to_keep = array_pop($current_active_malfunctioning_servers);
+                $server_data = end($current_active_malfunctioning_servers);
+                $domain = key($current_active_malfunctioning_servers);
             }
-            $domain = key($server_to_keep);
-            $this->logger->info("Server is due to be terminated but we keep it as the only active online server.", ['domain' => $domain, 'custom_state' => $server_to_keep[$domain]['custom_state']]);
+
+            $this->logger->info("Server is due to be terminated but we keep it as the only active online server.", ['domain' => $domain, 'custom_state' => $server_data['custom_state']]);
             unset($potential_active_servers[$domain]);
             unset($current_active_to_replace_servers_copy[$domain]);
         }
