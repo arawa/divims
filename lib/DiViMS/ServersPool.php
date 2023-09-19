@@ -170,8 +170,9 @@ class ServersPool
             // Mark nonexistent servers
             if  (!isset($v['hoster_state'])) $servers[$domain]['hoster_state'] = 'nonexistent';
 
-            // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
+            // Tag servers that need to be replaced
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
+                // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
                 if ($v['server_type'] == 'bare metal') {
                     $this->logger->error("Unresponsive bare metal server $domain detected. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status]);
                 } else {
@@ -191,7 +192,7 @@ class ServersPool
                 if ($v['server_type'] == 'bare metal') {
                     $this->logger->error("Uptime above limit for bare metal server $domain detected. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status]);
                 } else {
-                    $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
+                    $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state'], 'uptime' => $this->convertSecToTime($servers[$domain]['uptime'])]);
                     $servers[$domain]['custom_state'] = 'to recycle';
                 }
             } else {
@@ -201,6 +202,40 @@ class ServersPool
         }
         $this->list = $servers;
         return $servers;
+    }
+
+    /**
+     * Convert seconds to readable duration
+     * Usage example : convertSecToTime(3500); //58 minutes and 20 seconds
+     * https://stackoverflow.com/questions/49307094/php-function-to-convert-seconds-into-years-months-days-hours-minutes-and-sec
+     * 
+     * @param int $sec Number of seconds to convert
+     * @return string The readable duration
+     */
+    private function convertSecToTime(int $sec)
+    {
+        if (!$secs = (int)$secs)
+            return '0 seconds';
+
+        $units = [
+            'week' => 604800,
+            'day' => 86400,
+            'hour' => 3600,
+            'minute' => 60,
+            'second' => 1
+        ];
+
+        $strs = [];
+
+        foreach ($units as $name => $int) {
+            if ($secs < $int)
+                continue;
+            $num = (int) ($secs / $int);
+            $secs = $secs % $int;
+            $strs[] = "$num $name".(($num == 1) ? '' : 's');
+        }
+
+        return implode(', ', $strs);
     }
 
     /**
