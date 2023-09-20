@@ -1717,8 +1717,8 @@ class ServersPool
                     }
                 }
 
-                // Then enable servers that are quickly available
-                $ordered_hoster_states = ['starting', 'stopped in place', 'stopped', 'nonexistent'];
+                // Then enable servers ordered by their starting time
+                $ordered_hoster_states = ['starting', 'stopped in place', 'stopped', 'nonexistent', 'stopping'];
                 foreach ($ordered_hoster_states as $hoster_state) {
                     foreach ($potential_servers_to_enable as $domain => $v) {
                         if ($servers_to_enable_count == $server_difference_count) {
@@ -1742,22 +1742,6 @@ class ServersPool
                         }
                         if ($v['hoster_state'] == 'running' and $v['custom_state'] == $custom_state) {
                             $this->logger->info("Register (re-enable) running and $custom_state server in enable list.", ['domain' => $domain]);
-                            $servers_to_enable[] = $domain;
-                            unset($potential_servers_to_enable[$domain]);
-                            $servers_to_enable_count++;
-                        }
-                    }
-                }
-
-                // Then enable servers with longest starting time
-                $ordered_hoster_states = ['stopping'];
-                foreach($ordered_hoster_states as $hoster_state) {
-                    foreach ($potential_servers_to_enable as $domain => $v) {
-                        if ($servers_to_enable_count == $server_difference_count) {
-                            break 2;
-                        }
-                        if ($v['hoster_state'] == $hoster_state) {
-                            $this->logger->info("Register $hoster_state server in enable list.", ['domain' => $domain]);
                             $servers_to_enable[] = $domain;
                             unset($potential_servers_to_enable[$domain]);
                             $servers_to_enable_count++;
