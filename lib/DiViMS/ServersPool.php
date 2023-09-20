@@ -1756,8 +1756,8 @@ class ServersPool
                         if ($servers_to_enable_count == $server_difference_count) {
                             break 2;
                         }
-                        if ($v['hoster_state'] == $hoster_state and $v['custom_state'] != 'unresponsive' and $v['custom_state'] != 'malfunctioning' and $v['custom_state'] != 'to recycle') {
-                            $this->logger->info("Register $hoster_state and {$v['scalelite_state']} in Scalelite server in enable list.", ['domain' => $domain]);
+                        if ($v['hoster_state'] == $hoster_state) {
+                            $this->logger->info("Register $hoster_state server in enable list.", ['domain' => $domain]);
                             $servers_to_enable[] = $domain;
                             unset($potential_servers_to_enable[$domain]);
                             $servers_to_enable_count++;
