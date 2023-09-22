@@ -39,7 +39,7 @@ class ServersPool
      *  'bbb_status' -> 'OK|KO',
      *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked|unreachable), 'hoster_state_duration', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
      *  'divims_state' -> '(active|in maintenance)'
-     *  'custom_state' -> 'unresponsive|null'
+     *  'custom_state' -> 'unresponsive|to recycle|malfunctioning|null'
      *  'server_type' -> 'virtual machine|bare metal'
      */
     public $list = [];
@@ -170,24 +170,72 @@ class ServersPool
             // Mark nonexistent servers
             if  (!isset($v['hoster_state'])) $servers[$domain]['hoster_state'] = 'nonexistent';
 
-            // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
+            // Tag servers that need to be replaced
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
+                // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
                 if ($v['server_type'] == 'bare metal') {
                     $this->logger->error("Unresponsive bare metal server $domain detected. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status]);
                 } else {
                     $this->logger->error("Unresponsive virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
                 }
                 $servers[$domain]['custom_state'] = 'unresponsive';
-            }
-
-            // Warn about servers when BBB malfunctions
-            if ($v['hoster_state'] == 'running' and $v['bbb_status'] == 'KO' and $v['hoster_state_duration'] >= 120) {
-                $this->logger->warning("BBB server $domain malfunction detected. Check required.", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status']]);
+            } elseif ($v['hoster_state'] == 'running' and $v['bbb_status'] == 'KO' and $v['hoster_state_duration'] >= 120) {
+                // Also tag server as 'malfunctioning' when BBB malfunctions
+                if ($v['server_type'] == 'bare metal') {
+                    $this->logger->error("BBB malfunction detected for bare metal server $domain. Tag server as 'malfunctioning'. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status']]);
+                } else {
+                    $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'malfunctioning'.  Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status']]);
+                }
+                $servers[$domain]['custom_state'] = 'malfunctioning';
+            } elseif ($servers[$domain]['uptime'] >= $this->config->get('server_max_recycling_uptime')) {
+                // Alternatively check if server should be recycled due to long uptime
+                if ($v['server_type'] == 'bare metal') {
+                    $this->logger->error("Uptime above limit for bare metal server $domain detected. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status]);
+                } else {
+                    $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state'], 'uptime' => $this->convertSecToTime($servers[$domain]['uptime'])]);
+                    $servers[$domain]['custom_state'] = 'to recycle';
+                }
+            } else {
+                $servers[$domain]['custom_state'] = null; 
             }
 
         }
         $this->list = $servers;
         return $servers;
+    }
+
+    /**
+     * Convert seconds to readable duration
+     * Usage example : convertSecToTime(3500); //58 minutes and 20 seconds
+     * https://stackoverflow.com/questions/49307094/php-function-to-convert-seconds-into-years-months-days-hours-minutes-and-sec
+     * 
+     * @param int $sec Number of seconds to convert
+     * @return string The readable duration
+     */
+    private function convertSecToTime(int $secs)
+    {
+        if (!$secs = (int)$secs)
+            return '0 seconds';
+
+        $units = [
+            'week' => 604800,
+            'day' => 86400,
+            'hour' => 3600,
+            'minute' => 60,
+            'second' => 1
+        ];
+
+        $strs = [];
+
+        foreach ($units as $name => $int) {
+            if ($secs < $int)
+                continue;
+            $num = (int) ($secs / $int);
+            $secs = $secs % $int;
+            $strs[] = "$num $name".(($num == 1) ? '' : 's');
+        }
+
+        return implode(', ', $strs);
     }
 
     /**
@@ -1488,31 +1536,74 @@ class ServersPool
 
 
         $current_active_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running']);
+        //$current_active_servers_count = count($current_active_servers);
+
+        $current_active_online_servers = $this->getList(['scalelite_state' => 'enabled', 'scalelite_status' => 'online', 'hoster_state' => 'running']);
+        //$current_active_online_servers_count = count($current_active_online_servers);
+
         $current_active_bare_metal_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'server_type' => 'bare metal'], true, false);
+        $current_active_bare_metal_servers_count = count($current_active_bare_metal_servers);
         $soon_active_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'starting']);
         //$potential_active_servers = array_merge($current_active_servers, $soon_active_servers);
         $potential_active_servers = $this->getList(['scalelite_state' => 'enabled']);
 
-        // Treat unresponsive servers
-        $unresponsive_servers_to_cordon = [];
-        foreach ($current_active_servers as $domain => $v) {
-            if ($v['custom_state'] == 'unresponsive') {
-                $this->logger->info("Server is unresponsive. Add server to cordon list.", ['domain' => $domain]);
-                $unresponsive_servers_to_cordon[] = $domain;
-                unset($current_active_servers[$domain]);
-                unset($potential_active_servers[$domain]);
-            }
-        }
-        if (!empty($unresponsive_servers_to_cordon)) {
-            $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $unresponsive_servers_to_cordon]);
+        $current_active_unresponsive_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'unresponsive']);
+        $current_active_malfunctioning_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'malfunctioning']);
+        $current_active_to_recycle_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'to recycle']);
+
+        $current_active_to_replace_servers = array_merge($current_active_unresponsive_servers, $current_active_malfunctioning_servers, $current_active_to_recycle_servers);
+        $current_active_to_replace_servers_count = count($current_active_to_replace_servers);
+
+        // Unconditionnaly terminate 'unresponsive' servers
+        $to_terminate_servers = [];
+        $current_active_to_replace_servers_copy = $current_active_to_replace_servers;
+        foreach ($current_active_unresponsive_servers as $domain => $v) {
+            $this->logger->info("Unresponsive server due to be terminated. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state']]);
+            $to_terminate_servers[] = $domain;
+            unset($current_active_servers[$domain]);
+            unset($potential_active_servers[$domain]);
+            unset($current_active_to_replace_servers_copy[$domain]);
         }
 
+        // If there are still servers to replace, terminate them all
+        // But keep one server alive in case the number of server to replace matches the number of online servers
+        $additional_servers_to_enable_count = 0;
+        if (count($current_active_to_replace_servers_copy) == count($current_active_online_servers)) {
+            if (count($current_active_to_recycle_servers) >= 1 ) {
+                // Preferably keep a server to recycle
+                $server_data = end($current_active_to_recycle_servers);
+                $domain = key($current_active_to_recycle_servers);
+            } else {
+                // Else keep a malfunctioning server
+                $server_data = end($current_active_malfunctioning_servers);
+                $domain = key($current_active_malfunctioning_servers);
+            }
+
+            $this->logger->info("Server is due to be terminated but we keep it as the only active online server.", ['domain' => $domain, 'custom_state' => $server_data['custom_state']]);
+            // Start a new machine in advance to replace that one
+            $additional_servers_to_enable_count = 1;
+            // Remove server from the list of servers to be replaced
+            unset($current_active_to_replace_servers_copy[$domain]);
+        }
+        // Tag all other servers to replace to be terminated
+        foreach ($current_active_to_replace_servers_copy as $domain => $v) {
+            $this->logger->info("Server is due to be terminated. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state']]);
+            $to_terminate_servers[] = $domain;
+            unset($current_active_servers[$domain]);
+            unset($potential_active_servers[$domain]);
+            unset($current_active_to_replace_servers_copy[$domain]);
+        }
+        if (!empty($to_terminate_servers)) {
+            $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $to_terminate_servers]);
+        }
+        // Update the number of potential active servers
         $potential_active_servers_count = count($potential_active_servers);
-        $current_active_bare_metal_servers_count = count($current_active_bare_metal_servers);
+
         $this->logger->info("Current active (running and enabled in Scalelite) virtual machines servers count: " . count($current_active_servers));
         $this->logger->info("Current active (running and enabled in Scalelite) bare metal servers count: $current_active_bare_metal_servers_count");
         $this->logger->info("Soon active (starting and enabled in Scalelite) virtual machines servers count: " . count($soon_active_servers));
         $this->logger->info("Potential active (enabled in Scalelite) virtual machine servers count: $potential_active_servers_count");
+        $this->logger->info("Servers to be replaced count : $current_active_to_replace_servers_count");
 
         if ($next_active_servers_count > 0) { //$next_capacity=-1 if no change in case of schedule policy
 
@@ -1521,10 +1612,10 @@ class ServersPool
              */
 
             $this->logger->info("Next required active servers count: $next_active_servers_count");
-            $server_difference_count = $next_active_servers_count - $potential_active_servers_count - $current_active_bare_metal_servers_count;
+            $server_difference_count = $next_active_servers_count - $potential_active_servers_count - $current_active_bare_metal_servers_count + $additional_servers_to_enable_count;
             $this->logger->info("Server difference count : $server_difference_count");
             if ($next_active_servers_count > $this->config->get('pool_size')) {
-                $this->logger->warning("Next active servers count exceeds pool size. Limit to Pool size: " . $this->config->get('pool_size') . " servers");
+                $this->logger->error("Next active servers count exceeds pool size. Limit count to pool size: " . $this->config->get('pool_size') . " servers");
                 $next_active_servers_count = $this->config->get('pool_size');
             }
 
@@ -1606,22 +1697,51 @@ class ServersPool
             elseif ($server_difference_count > 0) {
                 $this->logger->info("Adaptation : Raise active servers count by $server_difference_count servers");
 
-                // Disable the required number of servers in Scalelite so that they drain rooms
+                // Enable the required number of servers in Scalelite so that they are started
                 $servers_to_enable_count = 0;
                 $servers_to_enable = [];
 
                 // Select servers that are not enabled
                 $potential_servers_to_enable = array_merge($this->getList(['scalelite_state' => 'cordoned']), $this->getList(['scalelite_state' => 'disabled']));
 
-                $ordered_hoster_states = ['running', 'starting', 'stopped in place', 'stopped', 'nonexistent', 'stopping'];
+                // First enable running servers without problems (custom_state = null)
+                foreach ($potential_servers_to_enable as $domain => $v) {
+                    if ($servers_to_enable_count == $server_difference_count) {
+                        break;
+                    }
+                    if ($v['hoster_state'] == 'running' and $v['custom_state'] == null) {
+                        $this->logger->info("Register running server in enable list.", ['domain' => $domain]);
+                        $servers_to_enable[] = $domain;
+                        unset($potential_servers_to_enable[$domain]);
+                        $servers_to_enable_count++;
+                    }
+                }
 
-                foreach($ordered_hoster_states as $hoster_state) {
+                // Then enable servers ordered by their starting time
+                $ordered_hoster_states = ['starting', 'stopped in place', 'stopped', 'nonexistent', 'stopping'];
+                foreach ($ordered_hoster_states as $hoster_state) {
                     foreach ($potential_servers_to_enable as $domain => $v) {
                         if ($servers_to_enable_count == $server_difference_count) {
                             break 2;
                         }
-                        if ($v['hoster_state'] == $hoster_state and $v['custom_state'] != 'unresponsive') {
-                            $this->logger->info("Register $hoster_state and {$v['scalelite_state']} in Scalelite server in enable list.", ['domain' => $domain]);
+                        if ($v['hoster_state'] == $hoster_state) {
+                            $this->logger->info("Register $hoster_state server in enable list.", ['domain' => $domain]);
+                            $servers_to_enable[] = $domain;
+                            unset($potential_servers_to_enable[$domain]);
+                            $servers_to_enable_count++;
+                        }
+                    }
+                }
+
+                // Then re-enable running servers with minor problems : 'to recycle' or 'malfunctioning'
+                $ordered_custom_states = ['to recycle', 'malfunctioning'];
+                foreach ($ordered_custom_states as $custom_state) {
+                    foreach ($potential_servers_to_enable as $domain => $v) {
+                        if ($servers_to_enable_count == $server_difference_count) {
+                            break 2;
+                        }
+                        if ($v['hoster_state'] == 'running' and $v['custom_state'] == $custom_state) {
+                            $this->logger->info("Register (re-enable) running and $custom_state server in enable list.", ['domain' => $domain]);
                             $servers_to_enable[] = $domain;
                             unset($potential_servers_to_enable[$domain]);
                             $servers_to_enable_count++;

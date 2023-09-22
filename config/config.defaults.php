@@ -31,7 +31,10 @@ $config = [
     'recordings_path_target' => '/mnt/scalelite-recordings/var/bigbluebutton/published/presentation',
 
     'maintenance_file_suffix' => '_ServersInMaintenance',
-    'reboot_file_suffix' => '_ServersToReboot',
+
+    // Max uptime in seconds above which a server is forcibly recycled
+    // This is to prevent errors that might occur after a long uptime
+    'server_max_recycling_uptime' => 60*60*24*30,
 
     // Adaptation from schedule
     'ical_cached_file_suffix' => '_adaptationCalendar',
