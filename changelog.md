@@ -1,5 +1,9 @@
 # Changelog
 
+## [3.3] - 2023-09-26
+## Add
+- Automatic recycling of servers whose uptime is above limit
+
 ## [3.2] - 2021-12-13
 ## Add
 - Check transfered recording sizes
