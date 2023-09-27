@@ -1568,7 +1568,7 @@ class ServersPool
         // If there are still servers to replace, terminate them all
         // But keep one server alive in case the number of server to replace matches the number of online servers
         $additional_servers_to_enable_count = 0;
-        if (count($current_active_to_replace_servers_copy) == count($current_active_online_servers)) {
+        if (!empty($current_active_online_servers) and count($current_active_to_replace_servers_copy) == count($current_active_online_servers)) {
             if (count($current_active_to_recycle_servers) >= 1 ) {
                 // Preferably keep a server to recycle
                 $server_data = end($current_active_to_recycle_servers);
