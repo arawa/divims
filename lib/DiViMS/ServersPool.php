@@ -1908,7 +1908,7 @@ class ServersPool
                                     $recording_id = (string) $recording->recordID;
                                     $recording_state = (string) $recording->state;
                                     $meeting_id = (string) $recording->meetingID;
-                                    $meeting_name = (string) $recording->metadata->meetingName;
+                                    $meeting_name = (string) $recording->name;
                                     $this->logger->warning("Recording processing duration exceeds limit for recording with id $recording_id.", compact('domain', 'recording_id', 'recording_state', 'meeting_id', 'meeting_name', 'processing_duration_minutes'));
                                 }
                             }
