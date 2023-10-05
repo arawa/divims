@@ -34,7 +34,7 @@ $config = [
 
     // Max uptime in seconds above which a server is forcibly recycled
     // This is to prevent errors that might occur after a long uptime
-    'server_max_recycling_uptime' => 60*60*24*30,
+    'server_max_recycling_uptime' => 60*60*24*7,
 
     // Adaptation from schedule
     'ical_cached_file_suffix' => '_adaptationCalendar',

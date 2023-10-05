@@ -171,28 +171,35 @@ class ServersPool
             if  (!isset($v['hoster_state'])) $servers[$domain]['hoster_state'] = 'nonexistent';
 
             // Tag servers that need to be replaced
+            $divims_state = $servers[$domain]['divims_state'];
+            $scalelite_status = $v['scalelite_status'];
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
                 // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
+                $log_context = compact('domain', 'bbb_status', 'divims_state');
                 if ($v['server_type'] == 'bare metal') {
-                    $this->logger->error("Unresponsive bare metal server $domain detected. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
+                    $this->logger->error("Unresponsive bare metal server $domain detected. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", $log_context);
                 } else {
-                    $this->logger->error("Unresponsive virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state']]);
+                    $this->logger->error("Unresponsive virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.",  $log_context);
                 }
                 $servers[$domain]['custom_state'] = 'unresponsive';
-            } elseif ($v['hoster_state'] == 'running' and $v['bbb_status'] == 'KO' and $v['hoster_state_duration'] >= 120) {
+            } elseif ($v['hoster_state'] == 'running' and $bbb_status == 'KO' and $v['hoster_state_duration'] >= 120) {
                 // Also tag server as 'malfunctioning' when BBB malfunctions
+                $log_context = compact('domain', 'scalelite_status', 'bbb_status', 'divims_state');
                 if ($v['server_type'] == 'bare metal') {
-                    $this->logger->error("BBB malfunction detected for bare metal server $domain. Tag server as 'malfunctioning'. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status'], 'divims_state' => $servers[$domain]['divims_state']]);
+                    $this->logger->error("BBB malfunction detected for bare metal server $domain. Tag server as 'malfunctioning'. MANUAL INTERVENTION REQUIRED !", $log_context);
                 } else {
-                    $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'malfunctioning'.  Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'server_type' => $v['server_type'], 'scalelite_status' => $v['scalelite_status'], 'bbb_status' => $v['bbb_status'], 'divims_state' => $servers[$domain]['divims_state']]);
+                    $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'malfunctioning'.  Server will be powered off unless it is in maintenance.", $log_context);
                 }
                 $servers[$domain]['custom_state'] = 'malfunctioning';
             } elseif ($servers[$domain]['uptime'] >= $this->config->get('server_max_recycling_uptime')) {
                 // Alternatively check if server should be recycled due to long uptime
+                $server_max_recycling_uptime = $this->convertSecToTime($this->config->get('server_max_recycling_uptime'));
+                $uptime = $this->convertSecToTime($servers[$domain]['uptime']);
+                $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');
                 if ($v['server_type'] == 'bare metal') {
-                    $this->logger->error("Uptime above limit for bare metal server $domain detected. MANUAL INTERVENTION REQUIRED !", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state'], 'uptime' => $this->convertSecToTime($servers[$domain]['uptime'])]);
+                    $this->logger->warning("Uptime above limit for bare metal server $domain detected. MANUAL INTERVENTION REQUIRED !", $log_context);
                 } else {
-                    $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'divims_state' => $servers[$domain]['divims_state'], 'uptime' => $this->convertSecToTime($servers[$domain]['uptime'])]);
+                    $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", $log_context);
                     $servers[$domain]['custom_state'] = 'to recycle';
                 }
             } else {
