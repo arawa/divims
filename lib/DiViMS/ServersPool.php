@@ -2001,7 +2001,9 @@ class ServersPool
             // Reboot bare metal servers
             foreach($bare_metal_servers_to_reboot as $domain => $v) {
                 $this->logger->info("Reboot bare metal server $domain", ['custom_state' => $v['custom_state']]);
-                $ssh = new SSH(['host' => $domain], $this->config, $this->logger);
+                $server_number = $this->getServerNumberFromDomain($domain);
+                $hostname_fqdn = $this->getHostnameFQDN($server_number);
+                $ssh = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
                 if (!$ssh->exec("sudo reboot", ['max_tries' => 3])) {
                     $this->logger->error("Could not reboot bare metal server $domain", ['ssh_return_value' => $ssh->getReturnValue(), 'custom_state' => $v['custom_state']]);
                 }
