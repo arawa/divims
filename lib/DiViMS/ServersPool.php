@@ -1787,7 +1787,7 @@ class ServersPool
                         next($running_disabled_servers);
                         next($starting_enabled_servers);
                     }
-    
+
                     $enable_success_list = $this->scaleliteActOnServersList(['action' => 'enable', 'domains' => $servers_to_enable]);
                     $cordon_success_list = $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $servers_to_cordon]);
 
@@ -1998,7 +1998,7 @@ class ServersPool
             $bare_metal_servers_to_reboot = $this->getFilteredArray($servers_ready_for_terminate, ['server_type' => 'bare metal']);
             $virtual_machines_to_terminate = $this->getFilteredArray($servers_ready_for_terminate, ['server_type' => 'virtual machine']);
  
-            // Reboot bare metal servers
+            // Reboot and re-enable bare metal servers
             foreach($bare_metal_servers_to_reboot as $domain => $v) {
                 $this->logger->info("Reboot bare metal server $domain", ['custom_state' => $v['custom_state']]);
                 $server_number = $this->getServerNumberFromDomain($domain);
@@ -2006,8 +2006,16 @@ class ServersPool
                 $ssh = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
                 if (!$ssh->exec("sudo reboot", ['max_tries' => 3])) {
                     $this->logger->error("Could not reboot bare metal server $domain", ['ssh_return_value' => $ssh->getReturnValue(), 'custom_state' => $v['custom_state']]);
+                    continue;
                 }
+                $servers_to_enable[] = $domain;
+                
             }
+            // Re-enable bare-metal servers in Scalelite
+            if (!empty($servers_to_enable)) {
+                $enable_success_list = $this->scaleliteActOnServersList(['action' => 'enable', 'domains' => $servers_to_enable]);
+            }
+            
 
             // Poweroff virtual machines at hoster
             if (!empty($virtual_machines_to_terminate)) {
