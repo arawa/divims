@@ -1592,14 +1592,9 @@ class ServersPool
         foreach ($current_active_to_replace_servers_copy as $domain => $v) {
             $this->logger->info("Server is due to be terminated or rebooted. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state'], 'server_type' => $v['server_type']]);
             $to_terminate_servers[] = $domain;
-
             unset($current_active_to_replace_servers_copy[$domain]);
-            if ($v['server_type'] == 'bare metal') {
-                unset($current_active_bare_metal_servers[$domain]);
-            } else {
-                unset($current_active_servers[$domain]);
-                unset($potential_active_servers[$domain]);
-            }
+            unset($current_active_servers[$domain]);
+            unset($potential_active_servers[$domain]);
         }
         if (!empty($to_terminate_servers)) {
             $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $to_terminate_servers]);
