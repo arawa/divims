@@ -1574,15 +1574,15 @@ class ServersPool
         if (!empty($current_active_online_servers) and count($current_active_to_replace_servers_copy) == count($current_active_online_servers)) {
             if (count($current_active_to_recycle_servers) >= 1 ) {
                 // Preferably keep a server to recycle
-                $server_data = end($current_active_to_recycle_servers);
+                $v = end($current_active_to_recycle_servers);
                 $domain = key($current_active_to_recycle_servers);
             } else {
                 // Else keep a malfunctioning server
-                $server_data = end($current_active_malfunctioning_servers);
+                $v = end($current_active_malfunctioning_servers);
                 $domain = key($current_active_malfunctioning_servers);
             }
 
-            $this->logger->info("Server is due to be terminated or rebooted but we keep it as the only active online server.", ['domain' => $domain, 'custom_state' => $server_data['custom_state'], 'server_type' => $v['server_type']]);
+            $this->logger->info("Server is due to be terminated or rebooted but we keep it as the only active online server.", ['domain' => $domain, 'custom_state' => $v['custom_state'], 'server_type' => $v['server_type']]);
             // Start a new machine in advance to replace that one
             $additional_servers_to_enable_count = 1;
             // Remove server from the list of servers to be replaced
@@ -1603,7 +1603,7 @@ class ServersPool
         $potential_active_servers_count = count($potential_active_servers);
         $current_active_bare_metal_servers_count = count($this->getFilteredArray($current_active_servers, ['server_type' => 'bare metal']));
 
-        $this->logger->info("Current active (running and enabled in Scalelite) virtual machines servers count: " . count($current_active_servers));
+        $this->logger->info("Current active (running and enabled in Scalelite) servers count: " . count($current_active_servers));
         $this->logger->info("Current active (running and enabled in Scalelite) bare metal servers count: $current_active_bare_metal_servers_count");
         $this->logger->info("Soon active (starting and enabled in Scalelite) virtual machines servers count: " . count($soon_active_servers));
         $this->logger->info("Potential active (enabled in Scalelite) virtual machine servers count: $potential_active_servers_count");
@@ -1800,7 +1800,7 @@ class ServersPool
 
         //Terminate
         //test if no remaining rooms and no recordings processing
-        $servers_to_terminate = array_merge($this->getList(['scalelite_state' => 'cordoned']), $this->getList(['scalelite_state' => 'disabled']));
+        $servers_to_terminate = array_merge($this->getList(['scalelite_state' => 'cordoned'], true, false), $this->getList(['scalelite_state' => 'disabled'], true, false));
 
         foreach ($servers_to_terminate as $domain => $v) {
 
@@ -1828,7 +1828,7 @@ class ServersPool
             // Terminate unresponsive servers
             if ($v['hoster_state'] == 'running' and $v['custom_state'] == 'unresponsive') {
                 $bbb_status = $v['bbb_status'];
-                $this->logger->warning("Add unresponsive server $domain to terminate list.", ['domain' => $domain, 'bbb_status' => $bbb_status]);
+                $this->logger->warning("Add unresponsive server $domain to terminate list.", ['domain' => $domain, 'bbb_status' => $bbb_status, 'server_type' => $v['server_type']]);
                 $servers_ready_for_terminate[$domain] = $v;
                 continue;
             }
