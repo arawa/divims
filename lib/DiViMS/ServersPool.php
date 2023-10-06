@@ -120,7 +120,6 @@ class ServersPool
             fclose($fp);
             $bare_metal_servers[$domain] = [
                 'hoster_state' => $state,
-                'hoster_state_duration' => 600, // 600 is big enough for further "online" tests
                 'server_type' => 'bare metal',
             ];
         }
@@ -159,6 +158,7 @@ class ServersPool
 
         foreach ($servers as $domain => $v) {
 
+
             // If uptime is undefined, set a  negative value
             $servers[$domain]['uptime'] = $v['uptime'] ?? -1;
             if (($v['divims_state'] ?? '') != 'in maintenance') {
@@ -169,6 +169,12 @@ class ServersPool
 
             // Mark nonexistent servers
             if  (!isset($v['hoster_state'])) $servers[$domain]['hoster_state'] = 'nonexistent';
+
+            // Set 'hoster_state_duration for running bare metal servers
+            if ($v['server_type'] == 'bare metal' and $v['hoster_state'] == 'running') {
+                $v['hoster_state_duration'] = round($v['uptime'] / 60);
+                $servers[$domain]['hoster_state_duration'] = $v['hoster_state_duration'];
+            }
 
             // Tag servers that need to be replaced
             $divims_state = $servers[$domain]['divims_state'];
@@ -191,10 +197,10 @@ class ServersPool
                     $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'malfunctioning'.  Server will be powered off unless it is in maintenance.", $log_context);
                 }
                 $servers[$domain]['custom_state'] = 'malfunctioning';
-            } elseif ($servers[$domain]['uptime'] >= $this->config->get('server_max_recycling_uptime')) {
+            } elseif ($v['uptime'] >= $this->config->get('server_max_recycling_uptime')) {
                 // Alternatively check if server should be recycled due to long uptime
                 $server_max_recycling_uptime = $this->convertSecToTime($this->config->get('server_max_recycling_uptime'));
-                $uptime = $this->convertSecToTime($servers[$domain]['uptime']);
+                $uptime = $this->convertSecToTime($v['uptime']);
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');
                 if ($v['server_type'] == 'bare metal') {
                     $this->logger->warning("Uptime above limit for bare metal server $domain detected. Server will be rebooted unless it is in maintenance.", $log_context);
