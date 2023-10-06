@@ -1634,7 +1634,7 @@ class ServersPool
             if ($server_difference_count < 0) {
                 $this->logger->info("Adaptation : Reduce active servers count by $server_difference_count servers");
 
-                $potential_servers_to_cordon = $potential_active_servers;
+                $potential_servers_to_cordon = $this->getFilteredArray($potential_active_servers, ['server_type' => 'virtual machine']);
 
                 //Sort servers list by number of rooms (https://stackoverflow.com/questions/2699086/how-to-sort-multi-dimensional-array-by-value)            
                 //So that we stop unused servers first => faster
