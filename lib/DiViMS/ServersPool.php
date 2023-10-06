@@ -1779,6 +1779,8 @@ class ServersPool
                     return $a['hoster_state_duration'] <=> $b['hoster_state_duration'];
                 });
                 $servers_to_switch_count = min(count($running_disabled_servers), count($starting_enabled_servers));
+                $servers_to_cordon = [];
+                $servers_to_enable = [];
                 if ($servers_to_switch_count > 0) {
                     $this->logger->info("Switch $servers_to_switch_count servers states in Scalelite");
                     for($i = $servers_to_switch_count; $i == 0; --$i) {
@@ -1997,8 +1999,9 @@ class ServersPool
 
             $bare_metal_servers_to_reboot = $this->getFilteredArray($servers_ready_for_terminate, ['server_type' => 'bare metal']);
             $virtual_machines_to_terminate = $this->getFilteredArray($servers_ready_for_terminate, ['server_type' => 'virtual machine']);
- 
+
             // Reboot and re-enable bare metal servers
+            $servers_to_enable = [];
             foreach($bare_metal_servers_to_reboot as $domain => $v) {
                 $this->logger->info("Reboot bare metal server $domain", ['custom_state' => $v['custom_state']]);
                 $server_number = $this->getServerNumberFromDomain($domain);
@@ -2009,20 +2012,19 @@ class ServersPool
                     continue;
                 }
                 $servers_to_enable[] = $domain;
-                
+
             }
             // Re-enable bare-metal servers in Scalelite
             if (!empty($servers_to_enable)) {
                 $enable_success_list = $this->scaleliteActOnServersList(['action' => 'enable', 'domains' => $servers_to_enable]);
             }
-            
 
             // Poweroff virtual machines at hoster
             if (!empty($virtual_machines_to_terminate)) {
                 $terminated_servers = $this->hosterActOnServersList(['action' => 'terminate', 'domains' => array_keys($virtual_machines_to_terminate)]);
 
                 $not_terminated_servers = array_diff(array_keys($virtual_machines_to_terminate), $terminated_servers);
-    
+
                 if (!empty($not_terminated_servers)) {
                     $this->logger->warning('Some virtual machines could not be terminated', ['servers_in_error' => json_encode($not_terminated_servers)]);
                 }
