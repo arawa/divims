@@ -186,7 +186,7 @@ class ServersPool
                 // Also tag server as 'malfunctioning' when BBB malfunctions
                 $log_context = compact('domain', 'scalelite_status', 'bbb_status', 'divims_state');
                 if ($v['server_type'] == 'bare metal') {
-                    $this->logger->error("BBB malfunction detected for bare metal server $domain. Tag server as 'malfunctioning'. MANUAL INTERVENTION REQUIRED !", $log_context);
+                    $this->logger->error("BBB malfunction detected for bare metal server $domain. Tag server as 'malfunctioning'. Server will be rebooted unless it is in maintenance.", $log_context);
                 } else {
                     $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'malfunctioning'.  Server will be powered off unless it is in maintenance.", $log_context);
                 }
@@ -197,11 +197,11 @@ class ServersPool
                 $uptime = $this->convertSecToTime($servers[$domain]['uptime']);
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');
                 if ($v['server_type'] == 'bare metal') {
-                    $this->logger->warning("Uptime above limit for bare metal server $domain detected. MANUAL INTERVENTION REQUIRED !", $log_context);
+                    $this->logger->warning("Uptime above limit for bare metal server $domain detected. Server will be rebooted unless it is in maintenance.", $log_context);
                 } else {
                     $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", $log_context);
-                    $servers[$domain]['custom_state'] = 'to recycle';
                 }
+                $servers[$domain]['custom_state'] = 'to recycle';
             } else {
                 $servers[$domain]['custom_state'] = null; 
             }
@@ -1549,14 +1549,14 @@ class ServersPool
         //$current_active_online_servers_count = count($current_active_online_servers);
 
         $current_active_bare_metal_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'bbb_status' => 'OK', 'server_type' => 'bare metal'], true, false);
-        $current_active_bare_metal_servers_count = count($current_active_bare_metal_servers);
+        
         $soon_active_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'starting']);
         //$potential_active_servers = array_merge($current_active_servers, $soon_active_servers);
         $potential_active_servers = $this->getList(['scalelite_state' => 'enabled']);
 
         $current_active_unresponsive_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'unresponsive']);
-        $current_active_malfunctioning_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'malfunctioning']);
-        $current_active_to_recycle_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'to recycle']);
+        $current_active_malfunctioning_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'malfunctioning'], true, false);
+        $current_active_to_recycle_servers = $this->getList(['scalelite_state' => 'enabled', 'hoster_state' => 'running', 'custom_state' => 'to recycle'], true, false);
 
         $current_active_to_replace_servers = array_merge($current_active_unresponsive_servers, $current_active_malfunctioning_servers, $current_active_to_recycle_servers);
         $current_active_to_replace_servers_count = count($current_active_to_replace_servers);
@@ -1596,15 +1596,21 @@ class ServersPool
         foreach ($current_active_to_replace_servers_copy as $domain => $v) {
             $this->logger->info("Server is due to be terminated. Add server to cordon list.", ['domain' => $domain, 'custom_state' => $v['custom_state']]);
             $to_terminate_servers[] = $domain;
-            unset($current_active_servers[$domain]);
-            unset($potential_active_servers[$domain]);
+
             unset($current_active_to_replace_servers_copy[$domain]);
+            if ($v['server_type'] == 'bare metal') {
+                unset($current_active_bare_metal_servers[$domain]);
+            } else {
+                unset($current_active_servers[$domain]);
+                unset($potential_active_servers[$domain]);
+            }
         }
         if (!empty($to_terminate_servers)) {
             $this->scaleliteActOnServersList(['action' => 'cordon', 'domains' => $to_terminate_servers]);
         }
         // Update the number of potential active servers
         $potential_active_servers_count = count($potential_active_servers);
+        $current_active_bare_metal_servers_count = count($current_active_bare_metal_servers);
 
         $this->logger->info("Current active (running and enabled in Scalelite) virtual machines servers count: " . count($current_active_servers));
         $this->logger->info("Current active (running and enabled in Scalelite) bare metal servers count: $current_active_bare_metal_servers_count");
@@ -1992,14 +1998,29 @@ class ServersPool
 
         if (!empty($servers_ready_for_terminate)) {
 
-            // Poweroff servers at hoster
-            $terminated_servers = $this->hosterActOnServersList(['action' => 'terminate', 'domains' => array_keys($servers_ready_for_terminate)]);
-
-            $not_terminated_servers = array_diff(array_keys($servers_ready_for_terminate), $terminated_servers);
-
-            if (!empty($not_terminated_servers)) {
-                $this->logger->warning('Some servers could not be terminated', ['servers_in_error' => json_encode($not_terminated_servers)]);
+            $bare_metal_servers_to_reboot = $this->getFilteredArray($servers_ready_for_terminate, ['server_type' => 'bare metal']);
+            $virtual_machines_to_terminate = $this->getFilteredArray($servers_ready_for_terminate, ['server_type' => 'virtual machine']);
+ 
+            // Reboot bare metal servers
+            foreach($bare_metal_servers_to_reboot as $domain => $v) {
+                $this->logger->info("Reboot bare metal server $domain", ['custom_state' => $v['custom_state']]);
+                $ssh = new SSH(['host' => $domain], $this->config, $this->logger);
+                if (!$ssh->exec("sudo reboot", ['max_tries' => 3])) {
+                    $this->logger->error("Could not reboot bare metal server $domain", ['ssh_return_value' => $ssh->getReturnValue(), 'custom_state' => $v['custom_state']]);
+                }
             }
+
+            // Poweroff virtual machines at hoster
+            if (!empty($virtual_machines_to_terminate)) {
+                $terminated_servers = $this->hosterActOnServersList(['action' => 'terminate', 'domains' => array_keys($virtual_machines_to_terminate)]);
+
+                $not_terminated_servers = array_diff(array_keys($virtual_machines_to_terminate), $terminated_servers);
+    
+                if (!empty($not_terminated_servers)) {
+                    $this->logger->warning('Some virtual machines could not be terminated', ['servers_in_error' => json_encode($not_terminated_servers)]);
+                }
+            }
+
         }
 
         // Clone and start
