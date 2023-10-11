@@ -1852,17 +1852,17 @@ class ServersPool
                 // to avoid stopping a server that has just been started and could be used in a very near future
                 $running_duration_minutes = round($v['hoster_state_duration']/60);
                 if ($running_duration_minutes < ($this->config->get('controller_run_frequency') * 3)) {
-                    $this->logger->info("Server ready for terminate but running since too little time. Not terminating yet.", compact('domain', 'running_duration_minutes'));
+                    $this->logger->info("Server ready for terminate but running since too little time. Not terminating yet.", compact('domain', 'scalelite_state', 'running_duration_minutes'));
                     continue;
                 }
 
                 if ($scalelite_status == 'offline') {
-                    $this->logger->warning("Server running and ready for terminate but offline in Scalelite. Not terminating yet.", compact('domain', 'running_duration_minutes'));
+                    $this->logger->warning("Server running and ready for terminate but offline in Scalelite. Not terminating yet.", compact('domain', 'scalelite_state', 'running_duration_minutes'));
                     continue;
                 }
 
                 // Deal with online servers
-                $this->logger->info("Trying to terminate online and {$v['scalelite_state']} in Scalelite server. Check meetings and recordings first.", compact('domain', 'running_duration_minutes'));
+                $this->logger->info("Trying to terminate online server. Check meetings and recordings first.", compact('domain', 'scalelite_state', 'running_duration_minutes'));
                 try {
                     $bbb_secret = $v['secret'];
                     $bbb = new BigBlueButton("https://$domain/bigbluebutton/", $bbb_secret);
