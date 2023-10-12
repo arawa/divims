@@ -1840,7 +1840,7 @@ class ServersPool
             }
             // Terminate unresponsive servers
             if ($v['hoster_state'] == 'running' and $v['custom_state'] == 'unresponsive') {
-                $this->logger->warning("Add unresponsive server $domain to terminate list.", ['bbb_status' => $bbb_status, 'server_type' => $v['server_type']]);
+                $this->logger->info("Add unresponsive server $domain to terminate list.", ['bbb_status' => $bbb_status, 'server_type' => $v['server_type']]);
                 $servers_ready_for_terminate[$domain] = $v;
                 continue;
             }
@@ -1857,7 +1857,7 @@ class ServersPool
                 }
 
                 if ($scalelite_status == 'offline') {
-                    $this->logger->warning("Server running and ready for terminate but offline in Scalelite. Not terminating yet.", compact('domain', 'scalelite_state', 'running_duration_minutes'));
+                    $this->logger->info("Server running and ready for terminate but offline in Scalelite. Not terminating yet.", compact('domain', 'scalelite_state', 'running_duration_minutes'));
                     continue;
                 }
 
