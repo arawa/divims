@@ -1813,34 +1813,42 @@ class ServersPool
         foreach ($servers_to_terminate as $domain => $v) {
 
             // Create variables
+            $hoster_state = $v['hoster_state'];
             $scalelite_status = $v['scalelite_status']; // online or offline
             $scalelite_state = $v['scalelite_state']; // cordoned or disabled
             $bbb_status = $v['bbb_status'];
+            $server_type = $v['server_type'];
+            $hoster_state_duration_minutes = round($v['hoster_state_duration']/60);
 
             // Skip non existent servers
-            if ($v['hoster_state'] == 'nonexistent') {
+            if ($hoster_state == 'nonexistent') {
                 continue;
             }
 
             // Terminate "stopped and stopped in place" servers
-            if (in_array($v['hoster_state'], ['stopped', 'stopped in place'])) {
-                $this->logger->warning("Add {$v['hoster_state']} server $domain to terminate list.", ['domain' => $domain]);
+            if (in_array($hoster_state, ['stopped', 'stopped in place'])) {
+                $this->logger->warning("Add $hoster_state server $domain to terminate list.", compact('domain'));
                 $servers_ready_for_terminate[$domain] = $v;
                 continue;
             }
             // Can not poweroff a server currently stopping
-            if ($v['hoster_state'] == 'stopping') {
-                $this->logger->info("Server $domain stopping. Can not terminate.", ['scalelite_state' => $scalelite_state, 'stop_duration_minutes' => round($v['hoster_state_duration']/60)]);
+            if ($hoster_state == 'stopping') {
+                $stop_duration_minutes = $hoster_state_duration_minutes;
+                $log_context = compact('domain', 'scalelite_state', 'stop_duration_minutes');
+                $this->logger->info("Server $domain stopping. Can not terminate.", $log_context);
                 continue;
             }
             // Can not terminate a server starting
-            if ($v['hoster_state'] == 'starting') {
-                $this->logger->info("Server $domain starting. Can not terminate yet.", ['scalelite_state' => $scalelite_state, 'start_duration_minutes' => round($v['hoster_state_duration']/60)]);
+            if ($hoster_state == 'starting') {
+                $start_duration_minutes = $hoster_state_duration_minutes;
+                $log_context = compact('domain', 'scalelite_state', 'start_duration_minutes');
+                $this->logger->info("Server $domain starting. Can not terminate yet.", $log_context);
                 continue;
             }
             // Terminate unresponsive servers
-            if ($v['hoster_state'] == 'running' and $v['custom_state'] == 'unresponsive') {
-                $this->logger->info("Add unresponsive server $domain to terminate list.", ['bbb_status' => $bbb_status, 'server_type' => $v['server_type']]);
+            if ($hoster_state == 'running' and $v['custom_state'] == 'unresponsive') {
+                $log_context = compact('bbb_status', 'server_type');
+                $this->logger->info("Add unresponsive server $domain to terminate list.", $log_context);
                 $servers_ready_for_terminate[$domain] = $v;
                 continue;
             }
@@ -1850,14 +1858,16 @@ class ServersPool
             if ($v['hoster_state'] == 'running') {
                 // Check if server is running since at least 3 controller runs
                 // to avoid stopping a server that has just been started and could be used in a very near future
-                $running_duration_minutes = round($v['hoster_state_duration']/60);
+                $running_duration_minutes = $hoster_state_duration_minutes;
                 if ($running_duration_minutes < ($this->config->get('controller_run_frequency') * 3)) {
-                    $this->logger->info("Server ready for terminate but running since too little time. Not terminating yet.", compact('domain', 'scalelite_state', 'running_duration_minutes'));
+                    $log_context = compact('domain', 'scalelite_state', 'running_duration_minutes');
+                    $this->logger->info("Server $domain ready for terminate but running since too little time. Not terminating yet.", $log_context);
                     continue;
                 }
 
                 if ($scalelite_status == 'offline') {
-                    $this->logger->info("Server running and ready for terminate but offline in Scalelite. Not terminating yet.", compact('domain', 'scalelite_state', 'running_duration_minutes'));
+                    $log_context = compact('domain', 'scalelite_state', 'running_duration_minutes');
+                    $this->logger->info("Server $domain running and ready for terminate but offline in Scalelite. Not terminating yet.", $log_context);
                     continue;
                 }
 
