@@ -1974,19 +1974,23 @@ class ServersPool
                                 $recording_id = (string) $recording->recordID;
                                 $command_host = "'{ source_size=\$(sudo find $recordings_path_source/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$source_size; }'";
                                 if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
-                                    $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
+                                    $log_context = compact('domain', 'recording_id');
+                                    $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
                                     continue 2;
                                 } elseif (($source_size = intval($ssh_host->getOutput())) != 0) {
                                     $command_scalelite = "'{ target_size=\$(sudo find $recordings_path_target/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$target_size; }'";
                                     if (!$ssh_scalelite->exec($command_host, ['max_tries' => 3])) {
-                                        $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', compact('domain', 'recording_id'));
+                                        $log_context = compact('domain', 'recording_id');
+                                        $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
                                         continue 2;
                                     } elseif (($target_size = intval($ssh_scalelite->getOutput())) != $source_size) {
-                                        $this->logger->warning("Source (BBB) and target (Scalelite) recording with id $recording_id folder sizes do not match. Can not terminate server.", compact('domain', 'recording_id', 'source_size', 'target_size'));
+                                        $log_context = compact('domain', 'recording_id', 'source_size', 'target_size');
+                                        $this->logger->info("Source (BBB) and target (Scalelite) recording with id $recording_id folder sizes do not match. Can not terminate server.", $log_context);
                                         continue 2;
                                     } else {
                                         //success case
-                                        $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", compact('domain', 'recording_id'));
+                                        $log_context = compact('domain', 'recording_id');
+                                        $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", $log_context);
                                     }
                                 } else {
                                     $this->logger->warning("Source (BBB) recording with id $recording_id folder size is nul. Can not terminate server.", compact('domain', 'recording_id'));
