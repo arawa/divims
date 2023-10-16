@@ -2031,7 +2031,7 @@ class ServersPool
                 $server_number = $this->getServerNumberFromDomain($domain);
                 $hostname_fqdn = $this->getHostnameFQDN($server_number);
                 $ssh = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
-                if (!$ssh->exec("sudo reboot", ['max_tries' => 3])) {
+                if (!$ssh->exec("sudo shutdown --reboot +1", ['max_tries' => 3])) {
                     $this->logger->error("Could not reboot bare metal server $domain", ['ssh_return_value' => $ssh->getReturnValue(), 'custom_state' => $v['custom_state']]);
                     continue;
                 }
