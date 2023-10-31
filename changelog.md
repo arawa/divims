@@ -1,5 +1,9 @@
 # Changelog
 
+## [3.4] - 2023-10-31
+## Add
+- Automatic recycling of bare metal servers
+
 ## [3.3] - 2023-09-26
 ## Add
 - Automatic recycling of servers whose uptime is above limit
