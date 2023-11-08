@@ -1081,7 +1081,8 @@ class ServersPool
             $server_spec = [
                 "name" => $hostname,
                 "dynamic_ip_required" => false,
-                "enable_ipv6" => true,
+                "enable_ipv6" => !$this->config->get('clone_enable_routed_ip'),
+                "routed_ip_enabled" => $this->config->get('clone_enable_routed_ip'),
                 "commercial_type" => $this->config->get('clone_commercial_type'),
                 "image" => "$image_id",
                 "project" => $this->config->get('scw_project_id'),
