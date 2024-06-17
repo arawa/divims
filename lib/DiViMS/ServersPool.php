@@ -1881,41 +1881,39 @@ class ServersPool
                     // Test if server has remaining meetings
                     $this->logger->debug('Test BBB server for remaining meetings.', ['domain' => $domain]);
                     $result = $bbb->getMeetings();
-                    if ($result->getReturnCode() == 'SUCCESS') {
-                        $meetings = $result->getMeetings();
-                        if (!(empty($meetings))) {
-                            $this->logger->info("Still remaining meetings. Can not poweroff", ['domain' => $domain]);
-
-                            // Check if server has meetings that should be forcibly ended due to max duration reached
-                            $meetings_max_duration = $this->config->get('meetings_max_duration');
-                            $this->logger->debug("Checking for meetings older than $meetings_max_duration to forcibly end");
-                            foreach($result->getRawXml()->meetings->meeting as $meeting) {
-                                // Compute creation date in seconds from create time in epoch with milliseconds
-                                $creation_time = round($meeting->createTime/1000);
-                                $now = time();
-                                $meeting_duration_minutes = round(($now - $creation_time)/60); // Meeting duration in minutes
-                                if ($meeting_duration_minutes >= $meetings_max_duration) {
-                                    $meeting_id = (string) $meeting->meetingID;
-                                    $meeting_name = (string) $meeting->meetingName;
-                                    $meeting_password = (string) $meeting->moderatorPW;
-                                    $this->logger->warning("Meeting duration exceeds limit. Force end meeting with id $meeting_id", compact('meeting_id', 'meeting_name','meeting_duration_minutes'));
-                                    $endMeetingParams = new EndMeetingParameters($meeting_id, $meeting_password);
-                                    $response = $bbb->endMeeting($endMeetingParams);
-                                    if ($response->getReturnCode() == 'SUCCESS') {
-                                        $this->logger->info("End meeting successfull.");
-                                    } else {
-                                        $this->logger->error("End meeting with id $meeting_id failed.", compact('domain', 'meeting_id', 'meeting_name'));
-                                    }
-                                }
-                            }
-                            continue;
-                        } else {
-                            $this->logger->info("Server has no remaining meetings.", ['domain' => $domain]);
-                        }
-                    } else {
+                    if ($result->getReturnCode() != 'SUCCESS') {
                         $this->logger->error("Can not retrieve meetings info for server $domain.");
                         continue;
                     }
+                    $meetings = $result->getMeetings();
+                    if (!(empty($meetings))) {
+                        $this->logger->info("Still remaining meetings. Can not poweroff", ['domain' => $domain]);
+
+                        // Check if server has meetings that should be forcibly ended due to max duration reached
+                        $meetings_max_duration = $this->config->get('meetings_max_duration');
+                        $this->logger->debug("Checking for meetings older than $meetings_max_duration to forcibly end");
+                        foreach($result->getRawXml()->meetings->meeting as $meeting) {
+                            // Compute creation date in seconds from create time in epoch with milliseconds
+                            $creation_time = round($meeting->createTime/1000);
+                            $now = time();
+                            $meeting_duration_minutes = round(($now - $creation_time)/60); // Meeting duration in minutes
+                            if ($meeting_duration_minutes >= $meetings_max_duration) {
+                                $meeting_id = (string) $meeting->meetingID;
+                                $meeting_name = (string) $meeting->meetingName;
+                                $meeting_password = (string) $meeting->moderatorPW;
+                                $this->logger->warning("Meeting duration exceeds limit. Force end meeting with id $meeting_id", compact('meeting_id', 'meeting_name','meeting_duration_minutes'));
+                                $endMeetingParams = new EndMeetingParameters($meeting_id, $meeting_password);
+                                $response = $bbb->endMeeting($endMeetingParams);
+                                if ($response->getReturnCode() == 'SUCCESS') {
+                                    $this->logger->info("End meeting successfull.");
+                                } else {
+                                    $this->logger->error("End meeting with id $meeting_id failed.", compact('domain', 'meeting_id', 'meeting_name'));
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                    $this->logger->info("Server has no remaining meetings. Follow-on checks.", ['domain' => $domain]);
 
                     // Test if server is still processing recordings
                     $parameters = new GetRecordingsParameters();
@@ -1923,36 +1921,34 @@ class ServersPool
 
                     $this->logger->debug('Test BBB server for recordings in state "processing" or "processed"', ['domain' => $domain]);
                     $result = $bbb->getRecordings($parameters);
-                    if ($result->getReturnCode() == 'SUCCESS') {
-                        $recordings = $result->getRecords();
-                        //var_dump($recordings);
-                        if (!(empty($recordings))) {
-                            $this->logger->info("Server has recordings in 'processing' or 'processed' state. Can not terminate", ['domain' => $domain]);
-
-                            // Check if server has recordings that reached max processing duration
-                            $recordings_max_processing_duration = $this->config->get('recordings_max_processing_duration');
-                            $this->logger->debug("Checking for recordings processing longer than $recordings_max_processing_duration");
-                            foreach($result->getRawXml()->recordings->recording as $recording) {
-                                // Compute meeting end date in seconds from create time in epoch with milliseconds
-                                $creation_time = round($recording->endTime/1000);
-                                $now = time();
-                                $processing_duration_minutes = round(($now - $creation_time)/60); // Meeting duration in minutes
-                                if ($processing_duration_minutes >= $recordings_max_processing_duration) {
-                                    $recording_id = (string) $recording->recordID;
-                                    $recording_state = (string) $recording->state;
-                                    $meeting_id = (string) $recording->meetingID;
-                                    $meeting_name = (string) $recording->name;
-                                    $this->logger->warning("Recording processing duration exceeds limit for recording with id $recording_id.", compact('domain', 'recording_id', 'recording_state', 'meeting_id', 'meeting_name', 'processing_duration_minutes'));
-                                }
-                            }
-                            continue;
-                        } else {
-                            $this->logger->info("Server has no recording in 'processing' or 'processed' state. Follow on checks.", ['domain' => $domain]);
-                        }
-                    } else {
+                    if ($result->getReturnCode() != 'SUCCESS') {
                         $this->logger->error("Can not retrieve processing recordings information from API for server $domain.");
                         continue;
                     }
+                    $recordings = $result->getRecords();
+                    //var_dump($recordings);
+                    if (!(empty($recordings))) {
+                        $this->logger->info("Server has recordings in 'processing' or 'processed' state. Can not terminate", ['domain' => $domain]);
+
+                        // Check if server has recordings that reached max processing duration
+                        $recordings_max_processing_duration = $this->config->get('recordings_max_processing_duration');
+                        $this->logger->debug("Checking for recordings processing longer than $recordings_max_processing_duration");
+                        foreach($result->getRawXml()->recordings->recording as $recording) {
+                            // Compute meeting end date in seconds from create time in epoch with milliseconds
+                            $creation_time = round($recording->endTime/1000);
+                            $now = time();
+                            $processing_duration_minutes = round(($now - $creation_time)/60); // Meeting duration in minutes
+                            if ($processing_duration_minutes >= $recordings_max_processing_duration) {
+                                $recording_id = (string) $recording->recordID;
+                                $recording_state = (string) $recording->state;
+                                $meeting_id = (string) $recording->meetingID;
+                                $meeting_name = (string) $recording->name;
+                                $this->logger->warning("Recording processing duration exceeds limit for recording with id $recording_id.", compact('domain', 'recording_id', 'recording_state', 'meeting_id', 'meeting_name', 'processing_duration_minutes'));
+                            }
+                        }
+                        continue;
+                    }
+                    $this->logger->info("Server has no recording in 'processing' or 'processed' state. Follow on checks.", ['domain' => $domain]);
 
                     // Test if all published recordings were transfered to final storage
                     // For each recording compare source (BBB) and target (Scalelite) folders sizes
@@ -1960,53 +1956,63 @@ class ServersPool
                     $parameters->setState('published');
                     $this->logger->debug('Test BBB server for recordings in "published" state', ['domain' => $domain]);
                     $result = $bbb->getRecordings($parameters);
-                    if ($result->getReturnCode() == 'SUCCESS') {
-                        $recordings = $result->getRecords();
-                        if (!(empty($recordings))) {
-                            $this->logger->info("Server has " . count($recordings) . " recording(s) in 'published' state. Check for successful transfer to final storage.", ['domain' => $domain]);
-                            $this->logger->debug('Compare sizes of recordings folders between source and target.', ['domain' => $domain]);
-                            $recordings_path_source = $this->config->get('recordings_path_source');
-                            $recordings_path_target = $this->config->get('recordings_path_target');
-                            $server_number = $this->getServerNumberFromDomain($domain);
-                            $hostname_fqdn = $this->getHostnameFQDN($server_number);
-                            $ssh_host = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
-                            $ssh_scalelite = new SSH(['host' => $this->config->get('scalelite_host')], $this->config, $this->logger);
-                            foreach($result->getRawXml()->recordings->recording as $recording) {
-                                $recording_id = (string) $recording->recordID;
-                                $command_host = "'{ source_size=\$(sudo find $recordings_path_source/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$source_size; }'";
-                                if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
-                                    $log_context = compact('domain', 'recording_id');
-                                    $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
-                                    continue 2;
-                                } elseif (($source_size = intval($ssh_host->getOutput())) != 0) {
-                                    $command_scalelite = "'{ target_size=\$(sudo find $recordings_path_target/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$target_size; }'";
-                                    if (!$ssh_scalelite->exec($command_host, ['max_tries' => 3])) {
-                                        $log_context = compact('domain', 'recording_id');
-                                        $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
-                                        continue 2;
-                                    } elseif (($target_size = intval($ssh_scalelite->getOutput())) != $source_size) {
-                                        $log_context = compact('domain', 'recording_id', 'source_size', 'target_size');
-                                        $this->logger->info("Source (BBB) and target (Scalelite) recording with id $recording_id folder sizes do not match. Can not terminate server.", $log_context);
-                                        continue 2;
-                                    } else {
-                                        //success case
-                                        $log_context = compact('domain', 'recording_id');
-                                        $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", $log_context);
-                                    }
-                                } else {
-                                    $this->logger->warning("Source (BBB) recording with id $recording_id folder size is nul. Can not terminate server.", compact('domain', 'recording_id'));
-                                    continue 2;
-                                }
-                            }
-                            $this->logger->info("All recordings transfer checks successful. Can terminate.", ['domain' => $domain]);
-                        } else {
-                            $this->logger->info("Server has no recording in 'published' state. Can terminate.", ['domain' => $domain]);
-                        }
-                    } else {
+                    if ($result->getReturnCode() != 'SUCCESS') {
                         $this->logger->error("Can not retrieve 'published' recordings information from API for server $domain.", ['domain' => $domain]);
                         continue;
                     }
-
+                    $recordings = $result->getRecords();
+                    if (!(empty($recordings))) {
+                        $this->logger->info("Server has " . count($recordings) . " recording(s) in 'published' state. Check for successful transfer to final storage.", ['domain' => $domain]);
+                        $this->logger->debug('Compare sizes of recordings folders between source and target.', ['domain' => $domain]);
+                        $recordings_path_source = $this->config->get('recordings_path_source');
+                        $recordings_path_target = $this->config->get('recordings_path_target');
+                        $server_number = $this->getServerNumberFromDomain($domain);
+                        $hostname_fqdn = $this->getHostnameFQDN($server_number);
+                        $ssh_host = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
+                        $ssh_scalelite = new SSH(['host' => $this->config->get('scalelite_host')], $this->config, $this->logger);
+                        foreach($result->getRawXml()->recordings->recording as $recording) {
+                            $recording_id = (string) $recording->recordID;
+                            $command_host = "'{ source_size=\$(sudo find $recordings_path_source/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$source_size; }'";
+                            if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
+                                $log_context = compact('domain', 'recording_id');
+                                $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
+                                continue 2;
+                            }
+                            $ssh_response=$ssh_host->getOutput();
+                            if (!ctype_digit($ssh_response)) {
+                                $log_context = compact('domain', 'recording_id', 'ssh_response');
+                                $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed : SSH response is not an integer", $log_context);
+                                continue 2;
+                            }
+                            if (($source_size = intval($ssh_response)) == 0) {
+                                $this->logger->warning("Source (BBB) recording with id $recording_id folder size is nil. Can not terminate server.", compact('domain', 'recording_id'));
+                                continue 2;
+                            }
+                            $command_scalelite = "'{ target_size=\$(sudo find $recordings_path_target/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$target_size; }'";
+                            if (!$ssh_scalelite->exec($command_host, ['max_tries' => 3])) {
+                                $log_context = compact('domain', 'recording_id');
+                                $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
+                                continue 2;
+                            }
+                            $ssh_response=$ssh_host->getOutput();
+                            if (!ctype_digit($ssh_response)) {
+                                $log_context = compact('domain', 'recording_id', 'ssh_response');
+                                $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed : SSH response is not an integer", $log_context);
+                                continue 2;
+                            }
+                            if (($target_size = intval($ssh_scalelite->getOutput())) != $source_size) {
+                                $log_context = compact('domain', 'recording_id', 'source_size', 'target_size');
+                                $this->logger->info("Source (BBB) and target (Scalelite) recording with id $recording_id folder sizes do not match. Can not terminate server.", $log_context);
+                                continue 2;
+                            }
+                            //success case
+                            $log_context = compact('domain', 'recording_id');
+                            $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", $log_context);
+                        }
+                        $this->logger->info("All recordings transfer checks successful. Can terminate.", ['domain' => $domain]);
+                    } else {
+                        $this->logger->info("Server has no recording in 'published' state. Can terminate.", ['domain' => $domain]);
+                    }
                 } catch (\RuntimeException $e) {
                     $this->logger->error("Can not retrieve info from BBB server $domain.", ["domain" => $domain, "BBB_api_error" => $e->getMessage()]);
                     continue;
