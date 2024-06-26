@@ -128,7 +128,7 @@ class SCW {
     # data needs to be POSTed to the Play url as JSON.
     # (some code from http://www.lornajane.net/posts/2011/posting-json-data-with-php-curl)
     //$data = array("id" => "$id", "symbol" => "$symbol", "companyName" => "$companyName");
-    $data_string = json_encode($post_data);
+    $data_string = json_encode($post_data, JSON_FORCE_OBJECT);
 
     $endpoint = $this->curl_base_url . $serviceURL;
     $ch = curl_init($endpoint);
