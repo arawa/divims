@@ -125,6 +125,13 @@ $pool = new ServersPool($config, $logger);
 //$pool->generateNFSCommands();
 //$pool->generateFirewallRules();
 
+/*
+$list = range(1,50);
+foreach($list as $i) {
+    $pool->reserveIPAndCreateDNSEntries($i, 'routed_ipv4');
+}
+*/
+
 /**
  * Test BigBlueButton Api
  */

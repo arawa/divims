@@ -983,7 +983,7 @@ class ServersPool
      * 
      * @param array $data An array containing DNS data of the newly created VM ['hostname', 'external_ipv4', 'external_ipv6']
      **/
-    public function createDNSEntriesOVH(array $server_data)
+    public function createDNSEntries(array $dns_data, bool $refresh_zone = false)
     {
         $ovh = new Api(
             $this->config->get('ovh_application_key'),
@@ -992,28 +992,39 @@ class ServersPool
             $this->config->get('ovh_consumer_key')
         );
 
-        //$result = $ovh->get('/domain/zone');
-
         // Create server A record
-        $subdomain = $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain');
-        $target = $server_data['external_ipv4'];
+        if (!isset($dns_data['external_ipv4'])) {
+            $this->logger->error('Can not create DNS entry A record : Missing external_ipv4');
+            return false;
+        }
+        if (!isset($dns_data['subdomain'])) {
+            $this->logger->error('Can not create DNS entry A or AAAA record : Missing subdomain');
+            return false;
+        }
+        $target = $dns_data['external_ipv4'];
+        $subdomain = $dns_data['subdomain'];
         $this->logger->info("Create A record", ['source' => $subdomain . '.' . $this->config->get('clone_dns_entry_zone'), 'target' => $target]);
-        $result = $ovh->post('/domain/zone/' . $this->config->get('clone_dns_entry_zone') . '/record', array(
-            'fieldType' => 'A', // Resource record Name (type: zone.NamedResolutionFieldTypeEnum)
-            'subDomain' => $subdomain, // Resource record subdomain (type: string)
-            'target' => $target, // Resource record target (type: string)
-            'ttl' => NULL, // Resource record ttl (type: long)
-        ));
-        //print_r( $result );
+        try {
+            $result = $ovh->post('/domain/zone/' . $this->config->get('clone_dns_entry_zone') . '/record', array(
+                'fieldType' => 'A', // Resource record Name (type: zone.NamedResolutionFieldTypeEnum)
+                'subDomain' => $subdomain, // Resource record subdomain (type: string)
+                'target' => $target, // Resource record target (type: string)
+                'ttl' => 0, // Resource record ttl (type: long) 0 means default
+            ));
+        } catch(\Exception $e) {
+            $this->logger->error('Create A record failed',  ['message' => $e->getMessage()]);
+            return false;
+        }
 
         if ($this->config->get('clone_dns_create_ipv6')) {
             // Create server AAAA record
-            $this->logger->info("Create AAAA record");
+            $target = $dns_data['external_ipv6'];
+            $this->logger->info("Create AAAA record", ['source' => $subdomain . '.' . $this->config->get('clone_dns_entry_zone'), 'target' => $target]);
             $result = $ovh->post('/domain/zone/' . $this->config->get('clone_dns_entry_zone') . '/record', array(
                 'fieldType' => 'AAAA', // Resource record Name (type: zone.NamedResolutionFieldTypeEnum)
-                'subDomain' => $server_data['hostname'] . '.' . $this->config->get('clone_dns_entry_subdomain'), // Resource record subdomain (type: string)
-                'target' => $server_data['external_ipv6'], // Resource record target (type: string)
-                'ttl' => NULL, // Resource record ttl (type: long)
+                'subDomain' => $subdomain, // Resource record subdomain (type: string)
+                'target' => $target, // Resource record target (type: string)
+                'ttl' => 0, // Resource record ttl (type: long)
             ));
             //print_r( $result );
         }
@@ -1033,9 +1044,81 @@ class ServersPool
         }
 
         //Refresh the zone
-        $this->logger->info("Refresh zone and wait 5 seconds for zone to be updated");
-        $result = $ovh->post('/domain/zone/'  . $this->config->get('clone_dns_entry_zone') . '/refresh');
-        sleep(5);
+        if ($refresh_zone) {
+            try {
+                $this->logger->info("Refresh zone and wait 5 seconds for zone to be updated");
+                $result = $ovh->post('/domain/zone/'  . $this->config->get('clone_dns_entry_zone') . '/refresh');
+                sleep(5);
+            } catch(\Exception $e) {
+                $this->logger->error('Refresh zone failed',  ['message' => $e->getMessage()]);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Reserve IP at hoster
+     *
+     * @param array $data An array containing IP data ['type' => 'routed_ipv4|routed_ipv6|nat', 'tags' => []]
+     **/
+    public function hosterReserveIP(array $ip_data)
+    {
+
+        $ip_type = $ip_data['type'] ?? 'routed_ipv4';
+        $ip_tags = $ip_data['tags'] ?? [];
+
+        $this->logger->info("Reserve new IP at hoster");
+
+        $response = $this->hoster_api->reserveIP(['project' => $this->config->get('scw_project_id'), 'type' => $ip_type, 'tags' => $ip_tags]);
+        
+        if (!isset($response['ip']['address'])) {
+            $this->logger->error("Reserve new IP at hoster failed", ['response' => json_encode($response, JSON_PRETTY_PRINT)]);
+            return false;
+        }
+
+        $ip_address = $response['ip']['address'];
+        $ip_id = $response['ip']['id'];
+        $this->logger->info("Reserve new IP succeeded", compact('ip_type', 'ip_address', 'ip_id'));
+        return compact('ip_address', 'ip_id');
+    }
+
+     /**
+     * Reserve IP and create DNS entries
+     *
+     * @param array $data An array containing IP data ['type' => 'routed_ipv4|routed_ipv6|nat', 'tags' => []]
+     **/
+    public function reserveIPAndCreateDNSEntries(int $server_number, string $ip_type = null, array $ip_tags = [])
+    {
+
+        $this->logger->info("Reserve new IP and create DNS entries", compact('server_number'));
+
+        $ip_data = [];
+        if (! is_null($ip_type)) $ip_data['type'] = $ip_type;
+        if (! empty($ip_tags)) $ip_data['tags'] = $ip_tags;
+        $ip_data = $this->hosterReserveIP($ip_data);
+
+        if (! $ip_data) return false;
+
+        $dns_data = [];
+        $dns_data['external_ipv4'] = $ip_data['ip_address'];
+        $dns_data['subdomain'] = $this->getHostname($server_number) . '.' . $this->config->get('clone_dns_entry_subdomain');
+        $result = $this->createDNSEntries($dns_data, true);
+
+        if (! $result) {
+            return false;
+        }
+
+        // Update reverse DNS for that IP
+        $this->logger->info("Update reverse DNS for IP at hoster");
+        $response = $this->hoster_api->updateIP($ip_data['ip_id'], ['reverse' => $dns_data['subdomain'] . '.' . $this->config->get('clone_dns_entry_zone')]);
+        if (!isset($response['ip']['id'])) {
+            $this->logger->error("Update reverse DNS for IP at hoster failed", ['response' => json_encode($response, JSON_PRETTY_PRINT)]);
+            return false;
+        }
+
+        return $ip_data['ip_address'];
     }
 
     /**

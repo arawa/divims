@@ -128,7 +128,7 @@ class SCW {
     # data needs to be POSTed to the Play url as JSON.
     # (some code from http://www.lornajane.net/posts/2011/posting-json-data-with-php-curl)
     //$data = array("id" => "$id", "symbol" => "$symbol", "companyName" => "$companyName");
-    $data_string = json_encode($post_data, JSON_FORCE_OBJECT);
+    $data_string = json_encode($post_data);
 
     $endpoint = $this->curl_base_url . $serviceURL;
     $ch = curl_init($endpoint);
@@ -146,25 +146,25 @@ class SCW {
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
 
-    $data = curl_exec($ch);
+    $response_data = curl_exec($ch);
     curl_close($ch);
 
-    if ($data !== false) {
-      $result = json_decode($data, true);
+    if ($response_data !== false) {
+      $result = json_decode($response_data, true);
 
       if (is_array($result)) {
         return $result;
       } else {
-        $this->logger->warning('Response error at SCW API POST request: data can not be converted to array.', ['url' => $url, 'response_data' => $data]);
+        $this->logger->warning('Response error at SCW API POST request: data can not be converted to array.', compact('url', 'response_data'));
         return false;
       }
     } else {
-      $this->logger->warning('Curl error at SCW API POST request', ['url' => $url, 'response_data' => $data]);
+      $this->logger->warning('Curl error at SCW API POST request', compact('url', 'data_string', 'response_data'));
       return false;
     }
 
 
-    return json_decode($data, true);
+    return json_decode($response_data, true);
 
   }
 
@@ -237,7 +237,7 @@ class SCW {
   }
 
   public function getServerByID($server_id) {
-    return $this->get("/servers/${server_id}");
+    return $this->get("/servers/$server_id");
   }
 
   public function getIP($address) {
@@ -266,7 +266,7 @@ class SCW {
 
 
   public function updateServer(string $server_id, array $post_data) {
-    return $this->post("/servers/${server_id}", $post_data);
+    return $this->post("/servers/$server_id", $post_data);
   }
 
   public function createServer(array $post_data) {
@@ -282,7 +282,7 @@ class SCW {
   }
   
   public function getServerAction(string $server_id) {
-    return $this->get("/servers/${server_id}/action");
+    return $this->get("/servers/$server_id/action");
   }
  
   /**
