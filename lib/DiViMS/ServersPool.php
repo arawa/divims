@@ -2103,7 +2103,7 @@ class ServersPool
                     $server_number = $this->getServerNumberFromDomain($domain);
                     $hostname_fqdn = $this->getHostnameFQDN($server_number);
                     $ssh_host = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
-                    $command_host="directory=$directory;" . ' [[ -z "$(ls -A $directory)" ]] && echo empty || echo "not empty"';
+                    $command_host="{ directory=$directory;" . ' [[ -z "$(ls -A $directory)" ]] && echo empty || echo "not empty"; }';
                     if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
                         $log_context = compact('domain');
                         $this->logger->error("Get info on directory $directory failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
