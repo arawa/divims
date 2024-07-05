@@ -66,7 +66,7 @@ $logger->pushHandler(
     new FilterHandler(
         new DeduplicationHandler(
             new NativeMailerHandler("<mail_recipient_address>", "Warning : DiViM-S $project", "<mail_from_address>", Logger::WARNING),
-            "/app/tmp/${project}_email_warning.log", Logger::WARNING, 86400
+            "/app/tmp/$project" . "_email_warning.log", Logger::WARNING, 86400
         ),
         Logger::WARNING, Logger::WARNING
     )
@@ -75,7 +75,7 @@ $logger->pushHandler(
 $logger->pushHandler(
     new DeduplicationHandler(
         new NativeMailerHandler("<mail_recipient_address>", "Error : DiViM-S $project", "<mail_from_address>", Logger::ERROR),
-        "/app/tmp/${project}_email_error.log", Logger::ERROR, 3600
+        "/app/tmp/$project" . "_email_error.log", Logger::ERROR, 3600
     )
 );
 

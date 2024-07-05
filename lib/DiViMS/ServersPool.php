@@ -2092,10 +2092,31 @@ class ServersPool
                             $log_context = compact('domain', 'recording_id');
                             $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", $log_context);
                         }
-                        $this->logger->info("All recordings transfer checks successful. Can terminate.", ['domain' => $domain]);
+                        $this->logger->info("All recordings transfer checks successful. Follow on checks.", ['domain' => $domain]);
                     } else {
-                        $this->logger->info("Server has no recording in 'published' state. Can terminate.", ['domain' => $domain]);
+                        $this->logger->info("Server has no recording in 'published' state. Follow on checks.", ['domain' => $domain]);
                     }
+
+                    // Test if directory "/var/bigbluebutton/recording/status/ended" is empty (in case recordings are still in state archive or sanity)
+                    $directory = "/var/bigbluebutton/recording/status/ended";
+                    $this->logger->debug("Test BBB server for empty $directory directory.", ['domain' => $domain]);
+                    $server_number = $this->getServerNumberFromDomain($domain);
+                    $hostname_fqdn = $this->getHostnameFQDN($server_number);
+                    $ssh_host = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
+                    $command_host="directory=$directory;" . ' [[ -z "$(ls -A $directory)" ]] && echo empty || echo "not empty"';
+                    if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
+                        $log_context = compact('domain');
+                        $this->logger->error("Get info on directory $directory failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
+                        continue;
+                    }
+                    $ssh_response=$ssh_host->getOutput();
+                    if (!($ssh_response == 'empty')) {
+                        $log_context = compact('domain', 'ssh_response');
+                        $this->logger->error("Directory $directory is not empty. Can not terminate server.", $log_context);
+                        continue;
+                    }
+                    $this->logger->info("$directory is empty. Can terminate server.", ['domain' => $domain]);
+
                 } catch (\RuntimeException $e) {
                     $this->logger->error("Can not retrieve info from BBB server $domain.", ["domain" => $domain, "BBB_api_error" => $e->getMessage()]);
                     continue;
