@@ -2046,6 +2046,7 @@ class ServersPool
                     $recordings = $result->getRecords();
                     if (!(empty($recordings))) {
                         $this->logger->warning("Server has " . count($recordings) . " recording(s) in 'published' state. Can not terminate.", ['domain' => $domain]);
+                        continue;
                        /*
                         $this->logger->info("Server has " . count($recordings) . " recording(s) in 'published' state. Check for successful transfer to final storage.", ['domain' => $domain]);
                         $this->logger->debug('Compare sizes of recordings folders between source and target.', ['domain' => $domain]);
