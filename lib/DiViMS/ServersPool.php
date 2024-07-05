@@ -2045,7 +2045,7 @@ class ServersPool
                     }
                     $recordings = $result->getRecords();
                     if (!(empty($recordings))) {
-                        $this->logger->warning("Server has " . count($recordings) . " recording(s) in 'published' state. Can not terminate.", ['domain' => $domain]);
+                        $this->logger->warning("Server $domain has " . count($recordings) . " recording(s) in 'published' state. Can not terminate.");
                         continue;
                        /*
                         $this->logger->info("Server has " . count($recordings) . " recording(s) in 'published' state. Check for successful transfer to final storage.", ['domain' => $domain]);
@@ -2110,13 +2110,13 @@ class ServersPool
                     $command_host="'{ directory=$directory; [[ -z \"\$(ls -A $directory)\" ]] && echo empty || echo \"not empty\"; }'";
                     if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
                         $log_context = compact('domain');
-                        $this->logger->error("Get info on directory $directory failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
+                        $this->logger->error("Get info on directory $directory for server $domain failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
                         continue;
                     }
                     $ssh_response=$ssh_host->getOutput();
                     if (!($ssh_response == 'empty')) {
                         $log_context = compact('domain', 'ssh_response');
-                        $this->logger->error("Directory $directory is not empty. Can not terminate server.", $log_context);
+                        $this->logger->error("Directory $directory is not empty for server $domain. Can not terminate server.", $log_context);
                         continue;
                     }
                     $this->logger->info("Directory $directory is empty. Can terminate server.", ['domain' => $domain]);
