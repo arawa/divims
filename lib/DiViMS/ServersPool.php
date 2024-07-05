@@ -2045,6 +2045,8 @@ class ServersPool
                     }
                     $recordings = $result->getRecords();
                     if (!(empty($recordings))) {
+                        $this->logger->warning("Server has " . count($recordings) . " recording(s) in 'published' state. Can not terminate.", ['domain' => $domain]);
+                       /*
                         $this->logger->info("Server has " . count($recordings) . " recording(s) in 'published' state. Check for successful transfer to final storage.", ['domain' => $domain]);
                         $this->logger->debug('Compare sizes of recordings folders between source and target.', ['domain' => $domain]);
                         $recordings_path_source = $this->config->get('recordings_path_source');
@@ -2077,13 +2079,13 @@ class ServersPool
                                 $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
                                 continue 2;
                             }
-                            $ssh_response=$ssh_host->getOutput();
+                            $ssh_response=$ssh_scalelite->getOutput();
                             if (!ctype_digit($ssh_response)) {
                                 $log_context = compact('domain', 'recording_id', 'ssh_response');
                                 $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed : SSH response is not an integer", $log_context);
                                 continue 2;
                             }
-                            if (($target_size = intval($ssh_scalelite->getOutput())) != $source_size) {
+                            if (($target_size = intval($ssh_response)) != $source_size) {
                                 $log_context = compact('domain', 'recording_id', 'source_size', 'target_size');
                                 $this->logger->info("Source (BBB) and target (Scalelite) recording with id $recording_id folder sizes do not match. Can not terminate server.", $log_context);
                                 continue 2;
@@ -2093,6 +2095,7 @@ class ServersPool
                             $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", $log_context);
                         }
                         $this->logger->info("All recordings transfer checks successful. Follow on checks.", ['domain' => $domain]);
+                        */
                     } else {
                         $this->logger->info("Server has no recording in 'published' state. Follow on checks.", ['domain' => $domain]);
                     }
