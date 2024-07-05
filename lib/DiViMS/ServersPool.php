@@ -2115,7 +2115,7 @@ class ServersPool
                         $this->logger->error("Directory $directory is not empty. Can not terminate server.", $log_context);
                         continue;
                     }
-                    $this->logger->info("$directory is empty. Can terminate server.", ['domain' => $domain]);
+                    $this->logger->info("Directory $directory is empty. Can terminate server.", ['domain' => $domain]);
 
                 } catch (\RuntimeException $e) {
                     $this->logger->error("Can not retrieve info from BBB server $domain.", ["domain" => $domain, "BBB_api_error" => $e->getMessage()]);
