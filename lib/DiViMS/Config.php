@@ -52,9 +52,9 @@ Class Config {
 
     public function set($item, $value) {
         if (isset($this->config[$item])) {
-            $this->logger->info("Change configuration item value.", ['item' => $item, 'value' => $value]);
+            $this->logger->debug("Change configuration item value.", ['item' => $item, 'value' => $value]);
         } else {
-            $this->logger->warning("Add new configuration item.", ['item' => $item, 'value' => $value]);
+            $this->logger->debug("Add new configuration item.", ['item' => $item, 'value' => $value]);
         }
         $this->config[$item] = $value;
         return true;
