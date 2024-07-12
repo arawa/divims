@@ -2116,7 +2116,7 @@ class ServersPool
                     $ssh_response=$ssh_host->getOutput();
                     if (!($ssh_response == 'empty')) {
                         $log_context = compact('domain', 'ssh_response');
-                        $this->logger->error("Directory $directory is not empty for server $domain. Can not terminate server.", $log_context);
+                        $this->logger->warning("Directory $directory is not empty for server $domain. Can not terminate server.", $log_context);
                         continue;
                     }
                     $this->logger->info("Directory $directory is empty. Can terminate server.", ['domain' => $domain]);
