@@ -75,4 +75,4 @@ Please visit [project page on Arawa's website](https://www.arawa.fr/solutions/pr
 
 ## Sponsors
 
-| <img src="https://www.education.gouv.fr/sites/default/files/site_logo/2024-09/MIN_Education_Nationale_et_Jeunesse_RVB.jpg" width="100"> | <a href="https://www.education.gouv.fr/direction-du-numerique-pour-l-education-dne-9983" alt="Site de la Direction du Numérique pour l'Éducation">Ministère de l'Éducation Nationale française (Direction du Numérique pour l'Éducation)</a> |
+<img src="https://www.education.gouv.fr/sites/default/files/site_logo/2024-09/MIN_Education_Nationale_et_Jeunesse_RVB.jpg" width="100" />  <a href="https://www.education.gouv.fr/direction-du-numerique-pour-l-education-dne-9983" alt="Site de la Direction du Numérique pour l'Éducation">Ministère de l'Éducation Nationale française (Direction du Numérique pour l'Éducation)</a>
