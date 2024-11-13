@@ -199,15 +199,25 @@ class ServersPool
                 $servers[$domain]['custom_state'] = 'malfunctioning';
             } elseif ($v['uptime'] >= $this->config->get('server_max_recycling_uptime')) {
                 // Alternatively check if server should be recycled due to long uptime
+                $servers[$domain]['custom_state'] = 'to recycle';
+
                 $server_max_recycling_uptime = $this->convertSecToTime($this->config->get('server_max_recycling_uptime'));
                 $uptime = $this->convertSecToTime($v['uptime']);
-                $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');
-                if ($v['server_type'] == 'bare metal') {
-                    $this->logger->warning("Uptime above limit for bare metal server $domain detected. Server will be rebooted unless it is in maintenance.", $log_context);
+                $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');    
+                if ($v['uptime'] >= ($this->config->get('server_max_recycling_uptime') + 60 * 60 * 7)) {
+                    // Log a warning if uptime exceeds by more than 7 hours 'server_max_recycling_uptime'
+                    if ($v['server_type'] == 'bare metal') {
+                        $this->logger->warning("Uptime far above limit for bare metal server $domain detected. Manual check required.", $log_context);
+                    } else {
+                        $this->logger->warning("Uptime far above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Manual check required.", $log_context);
+                    }
                 } else {
-                    $this->logger->warning("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", $log_context);
+                    if ($v['server_type'] == 'bare metal') {
+                        $this->logger->info("Uptime above limit for bare metal server $domain detected. Server will be rebooted unless it is in maintenance.", $log_context);
+                    } else {
+                        $this->logger->info("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", $log_context);
+                    }
                 }
-                $servers[$domain]['custom_state'] = 'to recycle';
             } else {
                 $servers[$domain]['custom_state'] = null; 
             }
