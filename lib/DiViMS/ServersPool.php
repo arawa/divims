@@ -165,7 +165,9 @@ class ServersPool
                 $servers[$domain]['divims_state'] = 'active';
             }
 
+            // Status data retrieved form script BBB-gatherStats locally on BBB servers
             $bbb_status = $v['bbb_status'] ?? 'undefined';
+            $trapline_check = $v['trapline_check'] ?? 'undefined';
 
             // Mark nonexistent servers
             if  (!isset($v['hoster_state'])) $servers[$domain]['hoster_state'] = 'nonexistent';
@@ -188,9 +190,9 @@ class ServersPool
                     $this->logger->error("Unresponsive virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.",  $log_context);
                 }
                 $servers[$domain]['custom_state'] = 'unresponsive';
-            } elseif ($v['hoster_state'] == 'running' and $bbb_status == 'KO' and $v['hoster_state_duration'] >= 120) {
+            } elseif ($v['hoster_state'] == 'running' and ($bbb_status == 'KO' or $trapline_check == 'KO') and $v['hoster_state_duration'] >= 120) {
                 // Also tag server as 'malfunctioning' when BBB malfunctions
-                $log_context = compact('domain', 'scalelite_status', 'bbb_status', 'divims_state');
+                $log_context = compact('domain', 'scalelite_status', 'bbb_status', 'trapline_check', 'divims_state');
                 if ($v['server_type'] == 'bare metal') {
                     $this->logger->error("BBB malfunction detected for bare metal server $domain. Tag server as 'malfunctioning'. Server will be rebooted unless it is in maintenance.", $log_context);
                 } else {

@@ -43,3 +43,18 @@ echo "hostname="$(hostname -s)
 ## Status
 bbb-conf --status | grep -q -E "inactive|activating|failed"
 echo "bbb_status="$([ $? -eq 0 ] && echo KO || echo OK)
+
+###
+## Check and report Trapline audio and video test
+###
+FILE=/root/trapline-test-results/.last-run.json
+if [[ -f  $FILE ]]; then
+  if grep -q passed $FILE; then
+    result="OK"
+  else
+    result="KO"
+  fi
+else
+  result="N/A"
+fi
+echo "trapline_check=$result"
