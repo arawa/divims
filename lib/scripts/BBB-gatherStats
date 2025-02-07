@@ -64,4 +64,4 @@ echo "trapline_check=$result"
 ###
 DIR=/var/bigbluebutton/recording/status/processed
 failed_recording_processing=$(cd $DIR 2>/dev/null && ls *.fail 2>/dev/null | tr "\n" ',')
-echo "failed_recording_processing=$failed_processing"
+echo "failed_recording_processing=$failed_recording_processing"
