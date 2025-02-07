@@ -37,6 +37,7 @@ class ServersPool
      *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier'
      *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4', 'external_ipv4', 'external_ipv6',
      *  'bbb_status' -> 'OK|KO',
+     *  'trapline_check',
      *  'failed_recording_processing',
      *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked|unreachable),
      *  'hoster_state_duration', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
@@ -650,6 +651,8 @@ class ServersPool
                     'external_ipv4' => $values['external_ipv4'],
                     'external_ipv6' => $values['external_ipv6'],
                     'bbb_status' => $values['bbb_status'],
+                    'trapline_check' => $values['trapline_check'],
+                    'failed_recording_processing' => $values['failed_recording_processing']
                 ];
                 //print "Worker " . $worker .  " finished batch " . $fetchCount . " for ID " . $i . " in ". ($time_post - $time_pre) . " seconds\n";
                 //echo "Domain treated : $domain\n";
