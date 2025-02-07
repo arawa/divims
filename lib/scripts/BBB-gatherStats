@@ -58,3 +58,10 @@ else
   result="N/A"
 fi
 echo "trapline_check=$result"
+
+###
+## Lookup failed recording processing
+###
+DIR=/var/bigbluebutton/recording/status/processed
+failed_recording_processing=$(cd $DIR 2>/dev/null && ls *.fail 2>/dev/null | tr "\n" ',')
+echo "failed_recording_processing=$failed_processing"

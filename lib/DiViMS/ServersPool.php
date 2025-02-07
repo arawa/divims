@@ -37,7 +37,9 @@ class ServersPool
      *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier'
      *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4', 'external_ipv4', 'external_ipv6',
      *  'bbb_status' -> 'OK|KO',
-     *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked|unreachable), 'hoster_state_duration', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
+     *  'failed_recording_processing',
+     *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked|unreachable),
+     *  'hoster_state_duration', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
      *  'divims_state' -> '(active|in maintenance)'
      *  'custom_state' -> 'unresponsive|to recycle|malfunctioning|null'
      *  'server_type' -> 'virtual machine|bare metal'
@@ -164,10 +166,11 @@ class ServersPool
             if (($v['divims_state'] ?? '') != 'in maintenance') {
                 $servers[$domain]['divims_state'] = 'active';
             }
-
+            
             // Status data retrieved form script BBB-gatherStats locally on BBB servers
             $bbb_status = $v['bbb_status'] ?? 'undefined';
             $trapline_check = $v['trapline_check'] ?? 'undefined';
+            $failed_recording_processing = isset($v['failed_recording_processing']) ? explode(',', $v['failed_recording_processing'], -1) : [];
 
             // Mark nonexistent servers
             if  (!isset($v['hoster_state'])) $servers[$domain]['hoster_state'] = 'nonexistent';
@@ -181,6 +184,16 @@ class ServersPool
             // Tag servers that need to be replaced
             $divims_state = $servers[$domain]['divims_state'];
             $scalelite_status = $v['scalelite_status'];
+            $servers[$domain]['custom_state'] = null;
+
+            if (! empty($failed_recording_processing)) {
+                // Detect failed recording processing and drain server.
+                $failed_recording_processing_count = count($failed_recording_processing);
+                $log_context = compact('domain', 'bbb_status', 'divims_state', 'failed_recording_processing_count');
+                $this->logger->error("Failed recording processing detected. Tag server as 'malfunctioning'. Server will be cordoned.", $log_context);
+                $servers[$domain]['custom_state'] = 'malfunctioning';
+            }
+
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
                 // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
                 $log_context = compact('domain', 'bbb_status', 'divims_state');
@@ -220,8 +233,6 @@ class ServersPool
                         $this->logger->info("Uptime above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Server will be powered off unless it is in maintenance.", $log_context);
                     }
                 }
-            } else {
-                $servers[$domain]['custom_state'] = null; 
             }
 
         }
@@ -2059,56 +2070,6 @@ class ServersPool
                     if (!(empty($recordings))) {
                         $this->logger->info("Server $domain has " . count($recordings) . " recording(s) in 'published' state. Can not terminate.");
                         continue;
-                       /*
-                        $this->logger->info("Server has " . count($recordings) . " recording(s) in 'published' state. Check for successful transfer to final storage.", ['domain' => $domain]);
-                        $this->logger->debug('Compare sizes of recordings folders between source and target.', ['domain' => $domain]);
-                        $recordings_path_source = $this->config->get('recordings_path_source');
-                        $recordings_path_target = $this->config->get('recordings_path_target');
-                        $server_number = $this->getServerNumberFromDomain($domain);
-                        $hostname_fqdn = $this->getHostnameFQDN($server_number);
-                        $ssh_host = new SSH(['host' => $hostname_fqdn], $this->config, $this->logger);
-                        $ssh_scalelite = new SSH(['host' => $this->config->get('scalelite_host')], $this->config, $this->logger);
-                        foreach($result->getRawXml()->recordings->recording as $recording) {
-                            $recording_id = (string) $recording->recordID;
-                            $command_host = "'{ source_size=\$(sudo find $recordings_path_source/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$source_size; }'";
-                            if (!$ssh_host->exec($command_host, ['max_tries' => 3])) {
-                                $log_context = compact('domain', 'recording_id');
-                                $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
-                                continue 2;
-                            }
-                            $ssh_response=$ssh_host->getOutput();
-                            if (!ctype_digit($ssh_response)) {
-                                $log_context = compact('domain', 'recording_id', 'ssh_response');
-                                $this->logger->error("Get source (BBB) recording with id $recording_id folder size failed : SSH response is not an integer", $log_context);
-                                continue 2;
-                            }
-                            if (($source_size = intval($ssh_response)) == 0) {
-                                $this->logger->warning("Source (BBB) recording with id $recording_id folder size is nil. Can not terminate server.", compact('domain', 'recording_id'));
-                                continue 2;
-                            }
-                            $command_scalelite = "'{ target_size=\$(sudo find $recordings_path_target/$recording_id -type f -print0 | du --files0-from=- -bc | tail -1 | cut -f1); echo \$target_size; }'";
-                            if (!$ssh_scalelite->exec($command_host, ['max_tries' => 3])) {
-                                $log_context = compact('domain', 'recording_id');
-                                $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed with SSH error code " . $ssh_host->getReturnValue() . '. Can not terminate server.', $log_context);
-                                continue 2;
-                            }
-                            $ssh_response=$ssh_scalelite->getOutput();
-                            if (!ctype_digit($ssh_response)) {
-                                $log_context = compact('domain', 'recording_id', 'ssh_response');
-                                $this->logger->error("Get target (Scalelite) recording with id $recording_id folder size failed : SSH response is not an integer", $log_context);
-                                continue 2;
-                            }
-                            if (($target_size = intval($ssh_response)) != $source_size) {
-                                $log_context = compact('domain', 'recording_id', 'source_size', 'target_size');
-                                $this->logger->info("Source (BBB) and target (Scalelite) recording with id $recording_id folder sizes do not match. Can not terminate server.", $log_context);
-                                continue 2;
-                            }
-                            //success case
-                            $log_context = compact('domain', 'recording_id');
-                            $this->logger->info("Source (BBB) and target (Scalelite) recording folder sizes match. Follow on checks.", $log_context);
-                        }
-                        $this->logger->info("All recordings transfer checks successful. Follow on checks.", ['domain' => $domain]);
-                        */
                     } else {
                         $this->logger->info("Server has no recording in 'published' state. Follow on checks.", ['domain' => $domain]);
                     }
