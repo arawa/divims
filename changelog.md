@@ -1,5 +1,9 @@
 # Changelog
 
+## [3.5] - 2025-02
+### Remove
+- Config parameter deprecated: 'clone_enable_routed_ip'
+
 ## [3.4] - 2023-10-31
 ## Add
 - Automatic recycling of bare metal servers
