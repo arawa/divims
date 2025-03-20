@@ -1,5 +1,9 @@
 # Changelog
 
+## [3.6] - 2025-03-20
+## Add
+- BBB version retrieved in BBB polling
+
 ## [3.5] - 2025-02
 ### Remove
 - Config parameter deprecated: 'clone_enable_routed_ip'
