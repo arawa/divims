@@ -36,7 +36,7 @@ class ServersPool
      * @var array  'bbb-wX.example.com' => ['scalelite_state' -> '(enabled|disabled|cordoned)', 'scalelite_status' -> '(online|offline)',
      *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier'
      *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4', 'external_ipv4', 'external_ipv6',
-     *  'bbb_status' -> 'OK|KO',
+     *  'bbb_status' -> 'OK|KO', 'bbb_version'
      *  'trapline_check',
      *  'failed_recording_processing',
      *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked|unreachable),
@@ -651,6 +651,7 @@ class ServersPool
                     'external_ipv4' => $values['external_ipv4'],
                     'external_ipv6' => $values['external_ipv6'],
                     'bbb_status' => $values['bbb_status'],
+                    'bbb_version' => $values['bbb_version'],
                     'trapline_check' => $values['trapline_check'],
                     'failed_recording_processing' => $values['failed_recording_processing']
                 ];

@@ -43,6 +43,8 @@ echo "hostname="$(hostname -s)
 ## Status
 bbb-conf --status | grep -q -E "inactive|activating|failed"
 echo "bbb_status="$([ $? -eq 0 ] && echo KO || echo OK)
+## BBB version
+echo "bbb_version="$(bbb-conf --version | grep '^BigBlueButton' | awk '{print $3}')
 
 ###
 ## Check and report Trapline audio and video test
