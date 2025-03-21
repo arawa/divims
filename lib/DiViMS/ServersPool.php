@@ -34,7 +34,7 @@ class ServersPool
     /**
      * Array of servers and metrics indexed by the Scalelite domain name of the server
      * @var array  'bbb-wX.example.com' => ['scalelite_state' -> '(enabled|disabled|cordoned)', 'scalelite_status' -> '(online|offline)',
-     *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier'
+     *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier', 'scalelite_tag'
      *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4', 'external_ipv4', 'external_ipv6',
      *  'bbb_status' -> 'OK|KO', 'bbb_version'
      *  'trapline_check',
@@ -466,11 +466,10 @@ class ServersPool
             //echo $table;
 
             /*
-                    HOSTNAME          STATE   STATUS  MEETINGS  USERS  LARGEST MEETING  VIDEOS
-            bbb-w1.univ-paris8.fr   enabled  online         0      0                0       0
-            bbb-w10.univ-paris8.fr  enabled  online         0      0                0       0
-            bbb-w11.univ-paris8.fr  enabled  online         0      0                0       0
-            ...
+                HOSTNAME              STATE   STATUS  MEETINGS  USERS  LARGEST MEETING  VIDEOS  LOAD  BBB VERSION  TAG 
+            bbb-dev-w1.example.com  disabled  online  0         0      0                0             3.0.0            
+            bbb-dev-w2.example.com  enabled   online  0         0      0                0        0.0  3.0.3            
+           ...
             */
 
             // Explode line by line, last line is empty
@@ -500,8 +499,8 @@ class ServersPool
                 }
 
                 $data[$domain] = [
-                    //'scalelite_state' => $p1[1],
-                    //'scalelite_status' => $p1[2],
+                    'scalelite_state' => $p1[1],
+                    'scalelite_status' => $p1[2],
                     'meetings' => intval($p1[3]),
                     'users' => intval($p1[4]),
                     'largest_meeting' => intval($p1[5]),
@@ -528,6 +527,8 @@ class ServersPool
             enabled
             load: unavailable
             load multiplier: 1.0
+            bbb version: 3.0.0
+            tag:
             offline
         */
 
@@ -536,7 +537,7 @@ class ServersPool
         //Parse data
 
         $line_count = count($table);
-        $entries = $line_count / 7;
+        $entries = $line_count / 9;
 
         if ($entries != $this->config->get('pool_size')) {
             $this->logger->critical("Scalelite 'servers' polling: Server entries count does not match pool size.", ['pool_size' => $this->config->get('pool_size'), 'result_count' => $entries]);
@@ -545,16 +546,18 @@ class ServersPool
             $this->logger->info("Scalelite 'servers' polling OK: $entries server entries matches pool size.");
         }
 
-        for ($i = 0; $i < $line_count; $i += 7) {
+        for ($i = 0; $i < $line_count; $i += 9) {
             $id = substr($table[$i], 4);
             preg_match('#https://([^/]+)#', $table[$i + 1], $matches);
             $domain = $matches[1];
             $secret = substr(trim($table[$i + 2]), 8);
-            $scalelite_state = trim($table[$i + 3]);
+            //$scalelite_state = trim($table[$i + 3]);
             $load = substr(trim($table[$i + 4]), 6);
             $load = ($load == 'unavailable') ? -1.0 : floatval($load);
             $load_multiplier = floatval(substr(trim($table[$i + 5]), 17));
-            $scalelite_status = trim($table[$i + 6]);
+            //$bbb_version = substr(trim($table[$i + 6]), 14);
+            $scalelite_tag = substr(trim($table[$i + 7]), 5);
+            //$scalelite_status = trim($table[$i + 8]);
 
             //Add to existing indexed data
             $data[$domain] = $data[$domain] ?? [];
@@ -563,10 +566,11 @@ class ServersPool
                 [
                     'scalelite_id' => $id,
                     'secret' => $secret,
-                    'scalelite_state' => $scalelite_state,
-                    'scalelite_status' => $scalelite_status,
+                    //'scalelite_state' => $scalelite_state,
+                    //'scalelite_status' => $scalelite_status,
                     'scalelite_load' => $load,
-                    'load_multiplier' => $load_multiplier
+                    'load_multiplier' => $load_multiplier,
+                    'scalelite_tag' => $scalelite_tag,
                 ]
             );
         }

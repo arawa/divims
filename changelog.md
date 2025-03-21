@@ -2,7 +2,9 @@
 
 ## [3.6] - 2025-03-20
 ## Add
-- BBB version retrieved in BBB polling
+- BBB version retrieved in BBB polling.
+- Scalelite tag retrieved in Scalelite polling.
+- Compatibility with Scalelite 1.6.3. Loses compatibility with Scalelite 1.5.X.
 
 ## [3.5] - 2025-02
 ### Remove
