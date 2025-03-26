@@ -221,11 +221,11 @@ class ServersPool
                 $uptime = $this->convertSecToTime($v['uptime']);
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');    
                 if ($v['uptime'] >= ($this->config->get('server_max_recycling_uptime') + 60 * 60 * 7)) {
-                    // Log a warning if uptime exceeds by more than 7 hours 'server_max_recycling_uptime'
+                    // Log an error if uptime exceeds by more than 7 hours 'server_max_recycling_uptime'
                     if ($v['server_type'] == 'bare metal') {
-                        $this->logger->warning("Uptime far above limit for bare metal server $domain detected. Manual check required.", $log_context);
+                        $this->logger->error("Uptime far above limit for bare metal server $domain detected. Manual check required.", $log_context);
                     } else {
-                        $this->logger->warning("Uptime far above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Manual check required.", $log_context);
+                        $this->logger->error("Uptime far above limit for virtual machine server $domain detected. Tag server as 'to recycle'. Manual check required.", $log_context);
                     }
                 } else {
                     if ($v['server_type'] == 'bare metal') {
