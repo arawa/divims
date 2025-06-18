@@ -1,5 +1,5 @@
 #docker build --tag php:parallel --build-arg PUID=$(id -u) --build-arg PGID=$(id -g) --build-arg USER=$(id -un) .
-FROM php:8.3-zts
+FROM php:8.4-zts
 
 RUN apt-get update \
   && apt-get -y install openssh-client git
