@@ -45,7 +45,7 @@ class SCW {
    *
    * @throws Exceptions\InvalidParameterException if one parameter is missing or with bad value
    */
-  public function __construct(array $params = [], \DiViMS\Config $config, \Psr\Log\LoggerInterface $logger) {
+  public function __construct(\DiViMS\Config $config, \Psr\Log\LoggerInterface $logger, array $params = []) {
 
     $this->config = $config;
     $this->logger = $logger;

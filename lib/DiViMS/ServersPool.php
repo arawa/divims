@@ -84,7 +84,7 @@ class ServersPool
         $this->logger = $logger;
         $this->server_capacity = $this->config->get('pool_capacity') / $this->config->get('pool_size');
         if ($this->config->get('hoster_api') == 'SCW') {
-            $this->hoster_api = new SCW([], $config, $logger);
+            $this->hoster_api = new SCW($config, $logger);
         }
         //$this->zabbix_api = new ZabbixApi($this->config->get('zabbix_api_url'), $this->config->get('zabbix_username'), $this->config->get('zabbix_password'));
     }
