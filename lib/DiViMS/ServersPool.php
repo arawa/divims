@@ -416,7 +416,7 @@ class ServersPool
      * @param int $workers Number of parallel processes to launch. Defaults to configration parameter 'poll_max_workers'.
      * @return array(int $batch_size, int $workers) Batch size and number of workers. 
      */
-    public function getParallelParameters(int $min_id, int $max_id, int $workers = NULL)
+    public function getParallelParameters(int $min_id, int $max_id, int|null $workers = NULL)
     {
 
         if (is_null($workers)) {
@@ -767,40 +767,6 @@ class ServersPool
     }
 
     /**
-     * Compute stats on the servers' list
-     * @param array $fiter An array of pairs keys values e.g. array('scalelite_state' => 'enabled')
-     */
-    public function getStats(array $filter = [])
-    {
-
-        $data = $this->getList($filter);
-
-        if (empty($data)) {
-            return false;
-        }
-
-        $count = count($data);
-
-        //Compute averages
-        $stats_items = ['meetings', 'users', 'videos', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1'];
-        foreach ($stats_items as $v) {
-            $stats[$v]['average'] = array_sum(array_column($data, $v)) / $count;
-            $stats[$v]['deviation'] = \stats_standard_deviation(array_column($data, $v)); // écart-type
-            $stats[$v]['relative_deviation'] = $stats[$v]['deviation'] / $stats[$v]['average']; //Coefficient de corrélation
-            $stats[$v]['variance'] = \stats_variance(array_column($data, $v));
-            $stats[$v]['percentile80'] = \stats_stat_percentile(array_column($data, $v), 0.8); //80% de l'échantillon est sous cette valeur
-        }
-
-        // Compute totals
-        $stats_items = ['meetings', 'users', 'videos', 'cpus'];
-        foreach ($stats_items as $v) {
-            $stats[$v]['total'] = array_sum(array_column($data, $v));
-        }
-
-        return $stats;
-    }
-
-    /**
      * Execute an action on the Scalelite server
      * @param array $params ["action" => ('enable'|'cordon'), "domain" => 'domain.example.com', 'id' => scalelite_id]. id is optional but takes precedence over domain to compute the id.
      * @return bool Success status
@@ -1120,7 +1086,7 @@ class ServersPool
      *
      * @param array $data An array containing IP data ['type' => 'routed_ipv4|routed_ipv6|nat', 'tags' => []]
      **/
-    public function reserveIPAndCreateDNSEntries(int $server_number, string $ip_type = null, array $ip_tags = [])
+    public function reserveIPAndCreateDNSEntries(int $server_number, string|null $ip_type = null, array $ip_tags = [])
     {
 
         $this->logger->info("Reserve new IP and create DNS entries", compact('server_number'));
