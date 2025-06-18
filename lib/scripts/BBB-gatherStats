@@ -49,15 +49,27 @@ echo "bbb_version="$(bbb-conf --version | grep '^BigBlueButton' | awk '{print $3
 ###
 ## Check and report Trapline audio and video test
 ###
-FILE=/root/trapline-test-results/.last-run.json
-if [[ -f  $FILE ]]; then
-  if grep -q passed $FILE; then
-    result="OK"
-  else
-    result="KO"
-  fi
-else
+FILE=/var/log/trapline/trapline.log
+# Example : { "timestamp":"2025-06-06T14:05:28+02:00", "host":"bbb-dev-w4.visio.education.fr", "build":"1302", "meetings":"0", "users":"0", "voice":"0", "videos":"0", "load":"0.01", "check":"0" }
+
+if ! [[ -f  $FILE ]]; then
   result="N/A"
+else
+  last_line=$(tail -1 /var/log/trapline/trapline.log)
+  if ! grep -q "check" <<<$last_line; then
+    result="ERROR: invalid log line"
+  else
+    check=$(jq .check <<<$last_line | tr -d '"')
+    timestamp=$(jq .timestamp <<<$last_line | tr -d '"')
+    last_check_seconds=$(( $(date '+%s') - $(date -d $timestamp '+%s') ))
+    if [[ $last_check_seconds -gt 600 ]]; then
+      result="ERROR: last check failed to proceed or timed out"
+    elif [[ $check -ne 0]]; then
+      result="ERROR: check failed with value $check"
+    else
+      result=OK
+    fi
+  fi
 fi
 echo "trapline_check=$result"
 
@@ -67,3 +79,13 @@ echo "trapline_check=$result"
 DIR=/var/bigbluebutton/recording/status/processed
 failed_recording_processing=$(cd $DIR 2>/dev/null && ls *.fail 2>/dev/null | tr "\n" ',')
 echo "failed_recording_processing=$failed_recording_processing"
+
+###
+# Get number of days until certificate enddate
+# Sources : 
+# - https://www.baeldung.com/linux/curl-request-timeout
+# - https://nickjanetakis.com/blog/using-curl-to-check-an-ssl-certificate-expiration-date-and-details
+# - https://stackoverflow.com/questions/66920940/parsing-the-date-to-calculate-days-until-cert-expiry-from-a-shell-script
+#
+bbb_hostname=$(grep -m1 -Poe 'server_name \K[^; ]+' /etc/nginx/sites-enabled/bigbluebutton)
+echo "certificate_validity_days=$(( ($(date -d "$(curl --connect-timeout 2 --max-time 2 -vkI https://$bbb_hostname --stderr - | grep "expire date" | cut -d":" -f 2-)" '+%s') - $(date '+%s')) / 86400 ))"
