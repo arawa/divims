@@ -1,5 +1,5 @@
-<?php
-# Copyright (c) 2013-2017, OVH SAS.
+<?php // phpcs:disable PSR1.Files.SideEffects.FoundWithSymbols
+# Copyright (c) 2013-2025, OVH SAS.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,13 @@
 namespace Ovh;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
+
+require_once('OAuth2.php');
 
 /**
  * Wrapper to manage login and exchanges with simpliest Ovh API
@@ -63,47 +68,60 @@ class Api
         'runabove-ca'   => 'https://api.runabove.com/1.0',
     ];
 
+    private static $OAUTH2_TOKEN_URLS = [
+        "ovh-eu" => "https://www.ovh.com/auth/oauth2/token",
+        "ovh-ca" => "https://ca.ovh.com/auth/oauth2/token",
+        "ovh-us" => "https://us.ovhcloud.com/auth/oauth2/token",
+    ];
+
     /**
      * Contain endpoint selected to choose API
      *
      * @var string
      */
-    private $endpoint = null;
+    private ?string $endpoint;
 
     /**
      * Contain key of the current application
      *
      * @var string
      */
-    private $application_key = null;
+    private ?string $application_key;
 
     /**
      * Contain secret of the current application
      *
      * @var string
      */
-    private $application_secret = null;
+    private ?string $application_secret;
 
     /**
      * Contain consumer key of the current application
      *
      * @var string
      */
-    private $consumer_key = null;
+    private ?string $consumer_key;
 
     /**
      * Contain delta between local timestamp and api server timestamp
      *
      * @var string
      */
-    private $time_delta = null;
+    private ?string $time_delta;
 
     /**
      * Contain http client connection
      *
      * @var Client
      */
-    private $http_client = null;
+    private ?Client $http_client;
+
+    /**
+     * OAuth2 wrapper if built with `withOAuth2`
+     *
+     * @var \Ovh\OAuth2
+     */
+    private ?OAuth2 $oauth2;
 
     /**
      * Construct a new wrapper instance
@@ -124,25 +142,20 @@ class Api
         $application_secret,
         $api_endpoint,
         $consumer_key = null,
-        Client $http_client = null
+        ?Client $http_client = null
     ) {
         if (!isset($api_endpoint)) {
             throw new Exceptions\InvalidParameterException("Endpoint parameter is empty");
         }
 
-        if (preg_match('/^https?:\/\/..*/',$api_endpoint))
-        {
-          $this->endpoint         = $api_endpoint;
-        }
-        else
-        {
-          if (!array_key_exists($api_endpoint, $this->endpoints)) {
-              throw new Exceptions\InvalidParameterException("Unknown provided endpoint");
-          }
-          else
-          {
+        if (preg_match('/^https?:\/\/..*/', $api_endpoint)) {
+            $this->endpoint         = $api_endpoint;
+        } else {
+            if (!array_key_exists($api_endpoint, $this->endpoints)) {
+                throw new Exceptions\InvalidParameterException("Unknown provided endpoint");
+            }
+
             $this->endpoint       = $this->endpoints[$api_endpoint];
-          }
         }
 
         if (!isset($http_client)) {
@@ -156,13 +169,32 @@ class Api
         $this->application_secret = $application_secret;
         $this->http_client        = $http_client;
         $this->consumer_key       = $consumer_key;
-        $this->time_delta         = null;
+        $this->oauth2             = null;
+    }
+
+    /**
+     * Alternative constructor to build a client using OAuth2
+     *
+     * @throws Exceptions\InvalidParameterException if one parameter is missing or with bad value
+     * @return Ovh\Api
+     */
+    public static function withOAuth2($clientId, $clientSecret, $apiEndpoint)
+    {
+        if (!array_key_exists($apiEndpoint, self::$OAUTH2_TOKEN_URLS)) {
+            throw new Exceptions\InvalidParameterException(
+                "OAuth2 authentication is not compatible with endpoint $apiEndpoint (it can only be used with ovh-eu, ovh-ca and ovh-us)"
+            );
+        }
+
+        $instance = new self("", "", $apiEndpoint);
+        $instance->oauth2 = new Oauth2($clientId, $clientSecret, self::$OAUTH2_TOKEN_URLS[$apiEndpoint]);
+        return $instance;
     }
 
     /**
      * Calculate time delta between local machine and API's server
      *
-     * @throws \GuzzleHttp\Exception\ClientException if http request is an error
+     * @throws ClientException if http request is an error
      * @return int
      */
     private function calculateTimeDelta()
@@ -189,7 +221,7 @@ class Api
      * @param string $redirection url to redirect on your website after authentication
      *
      * @return mixed
-     * @throws \GuzzleHttp\Exception\ClientException if http request is an error
+     * @throws ClientException if http request is an error
      */
     public function requestCredentials(
         array $accessRules,
@@ -215,21 +247,41 @@ class Api
     }
 
     /**
+     * getTarget returns the URL to target given an endpoint and a path.
+     * If the path starts with `/v1` or `/v2`, then remove the trailing `/1.0` from the endpoint.
+     *
+     * @param string path to use prefix from
+     * @return string
+     */
+    protected function getTarget($path) : string
+    {
+        $endpoint = $this->endpoint;
+        if (substr($endpoint, -4) == '/1.0' && (
+                substr($path, 0, 3) == '/v1' ||
+                substr($path, 0, 3) == '/v2')) {
+            $endpoint =  substr($endpoint, 0, strlen($endpoint)-4);
+        }
+        return $endpoint . $path;
+    }
+
+    /**
      * This is the main method of this wrapper. It will
      * sign a given query and return its result.
      *
-     * @param string               $method           HTTP method of request (GET,POST,PUT,DELETE)
-     * @param string               $path             relative url of API request
-     * @param \stdClass|array|null $content          body of the request
-     * @param bool                 $is_authenticated if the request use authentication
+     * @param string $method HTTP method of request (GET,POST,PUT,DELETE)
+     * @param string $path relative url of API request
+     * @param \stdClass|array|null $content body of the request
+     * @param bool $is_authenticated if the request use authentication
      *
-     * @return array
-     * @throws \GuzzleHttp\Exception\ClientException if http request is an error
+     * @param null $headers
+     * @return ResponseInterface
+     * @throws Exceptions\InvalidParameterException
+     * @throws GuzzleException
+     * @throws \JsonException
      */
-    protected function rawCall($method, $path, $content = null, $is_authenticated = true, $headers = null)
+    protected function rawCall($method, $path, $content = null, $is_authenticated = true, $headers = null): ResponseInterface
     {
-        if ( $is_authenticated )
-        {
+        if ($is_authenticated) {
             if (!isset($this->application_key)) {
                 throw new Exceptions\InvalidParameterException("Application key parameter is empty");
             }
@@ -239,12 +291,12 @@ class Api
             }
         }
 
-        $url     = $this->endpoint . $path;
+        $url     = $this->getTarget($path);
         $request = new Request($method, $url);
-        if (isset($content) && $method == 'GET') {
+        if (isset($content) && $method === 'GET') {
             $query_string = $request->getUri()->getQuery();
 
-            $query = array();
+            $query = [];
             if (!empty($query_string)) {
                 $queries = explode('&', $query_string);
                 foreach ($queries as $element) {
@@ -264,42 +316,46 @@ class Api
                 }
             }
 
-            $query = \GuzzleHttp\Psr7\build_query($query);
+            $query = \GuzzleHttp\Psr7\Query::build($query);
 
             $url     = $request->getUri()->withQuery($query);
             $request = $request->withUri($url);
             $body    = "";
         } elseif (isset($content)) {
-            $body = json_encode($content, JSON_UNESCAPED_SLASHES);
+            $body = json_encode($content, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
 
             $request->getBody()->write($body);
         } else {
             $body = "";
         }
-        if(!is_array($headers))
-        {
+        if (!is_array($headers)) {
             $headers = [];
         }
         $headers['Content-Type']      = 'application/json; charset=utf-8';
 
         if ($is_authenticated) {
+            if (!is_null($this->oauth2)) {
+                $headers['Authorization'] = $this->oauth2->getAuthorizationHeader();
+            } else {
+                $headers['X-Ovh-Application'] = $this->application_key ?? '';
 
-            $headers['X-Ovh-Application'] = $this->application_key;
+                if (!isset($this->time_delta)) {
+                    $this->calculateTimeDelta();
+                }
+                $now = time() + $this->time_delta;
 
-            if (!isset($this->time_delta)) {
-                $this->calculateTimeDelta();
+                $headers['X-Ovh-Timestamp'] = $now;
+
+                if (isset($this->consumer_key)) {
+                    $toSign                     = $this->application_secret . '+' . $this->consumer_key . '+' . $method
+                        . '+' . $url . '+' . $body . '+' . $now;
+                    $signature                  = '$1$' . sha1($toSign);
+                    $headers['X-Ovh-Consumer']  = $this->consumer_key;
+                    $headers['X-Ovh-Signature'] = $signature;
+                }
             }
-            $now = time() + $this->time_delta;
-
-            $headers['X-Ovh-Timestamp'] = $now;
-
-            if (isset($this->consumer_key)) {
-                $toSign                     = $this->application_secret . '+' . $this->consumer_key . '+' . $method
-                    . '+' . $url . '+' . $body . '+' . $now;
-                $signature                  = '$1$' . sha1($toSign);
-                $headers['X-Ovh-Consumer']  = $this->consumer_key;
-                $headers['X-Ovh-Signature'] = $signature;
-            }
+        } else {
+            $headers['X-Ovh-Application'] = $this->application_key ?? '';
         }
 
         /** @var Response $response */
@@ -309,41 +365,41 @@ class Api
     /**
      * Decode a Response object body to an Array
      *
-     * @param  Response $response
+     * @param Response $response
      *
-     * @return array
+     * @throws \JsonException
      */
-    private function decodeResponse(Response $response)
+    private function decodeResponse(ResponseInterface $response)
     {
-        return json_decode($response->getBody(), true);
+        if ($response->getStatusCode() === 204 || $response->getBody()->getSize() === 0) {
+            return null;
+        }
+        return json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
      * Wrap call to Ovh APIs for GET requests
      *
-     * @param string $path    path ask inside api
-     * @param array  $content content to send inside body of request
+     * @param string $path path ask inside api
+     * @param array $content content to send inside body of request
      * @param array  headers  custom HTTP headers to add on the request
      * @param bool   is_authenticated   if the request need to be authenticated
      *
-     * @return array
-     * @throws \GuzzleHttp\Exception\ClientException if http request is an error
+     * @throws ClientException if http request is an error
+     * @throws \JsonException
      */
     public function get($path, $content = null, $headers = null, $is_authenticated = true)
     {
-        if(preg_match('/^\/[^\/]+\.json$/', $path))
-        {
-          // Schema description must be access without authentication
-          return $this->decodeResponse(
-              $this->rawCall("GET", $path, $content, false, $headers)
-          );
+        if (preg_match('/^\/[^\/]+\.json$/', $path)) {
+            // Schema description must be access without authentication
+            return $this->decodeResponse(
+                $this->rawCall("GET", $path, $content, false, $headers)
+            );
         }
-        else
-        {
-          return $this->decodeResponse(
-              $this->rawCall("GET", $path, $content, $is_authenticated, $headers)
-          );
-        }
+
+        return $this->decodeResponse(
+            $this->rawCall("GET", $path, $content, $is_authenticated, $headers)
+        );
     }
 
     /**
@@ -354,8 +410,7 @@ class Api
      * @param array  headers  custom HTTP headers to add on the request
      * @param bool   is_authenticated   if the request need to be authenticated
      *
-     * @return array
-     * @throws \GuzzleHttp\Exception\ClientException if http request is an error
+     * @throws ClientException if http request is an error
      */
     public function post($path, $content = null, $headers = null, $is_authenticated = true)
     {
@@ -372,8 +427,7 @@ class Api
      * @param array  headers  custom HTTP headers to add on the request
      * @param bool   is_authenticated   if the request need to be authenticated
      *
-     * @return array
-     * @throws \GuzzleHttp\Exception\ClientException if http request is an error
+     * @throws ClientException if http request is an error
      */
     public function put($path, $content, $headers = null, $is_authenticated = true)
     {
@@ -390,8 +444,7 @@ class Api
      * @param array  headers  custom HTTP headers to add on the request
      * @param bool   is_authenticated   if the request need to be authenticated
      *
-     * @return array
-     * @throws \GuzzleHttp\Exception\ClientException if http request is an error
+     * @throws ClientException if http request is an error
      */
     public function delete($path, $content = null, $headers = null, $is_authenticated = true)
     {
@@ -403,15 +456,23 @@ class Api
     /**
      * Get the current consumer key
      */
-    public function getConsumerKey()
+    public function getConsumerKey(): ?string
     {
         return $this->consumer_key;
     }
 
     /**
+     * Get the current consumer key
+     */
+    public function setConsumerKey($consumer_key): void
+    {
+        $this->consumer_key = $consumer_key;
+    }
+
+    /**
      * Return instance of http client
      */
-    public function getHttpClient()
+    public function getHttpClient(): ?Client
     {
         return $this->http_client;
     }

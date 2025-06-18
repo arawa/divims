@@ -82,7 +82,7 @@ abstract class Node implements \IteratorAggregate, \ArrayAccess, \Countable, \Js
      *
      * @param Xml\Writer $writer XML writer
      */
-    abstract public function xmlSerialize(Xml\Writer $writer);
+    abstract public function xmlSerialize(Xml\Writer $writer): void;
 
     /**
      * Call this method on a document if you're done using it.
@@ -212,6 +212,8 @@ abstract class Node implements \IteratorAggregate, \ArrayAccess, \Countable, \Js
      *
      * @param int   $offset
      * @param mixed $value
+     *
+     * @return void
      */
     #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
@@ -233,6 +235,8 @@ abstract class Node implements \IteratorAggregate, \ArrayAccess, \Countable, \Js
      * This method just forwards the request to the inner iterator
      *
      * @param int $offset
+     *
+     * @return void
      */
     #[\ReturnTypeWillChange]
     public function offsetUnset($offset)

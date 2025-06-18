@@ -6,6 +6,8 @@ namespace Sabre\Xml\Element;
 
 use Sabre\Xml;
 
+use function Sabre\Uri\resolve;
+
 /**
  * Uri element.
  *
@@ -26,17 +28,13 @@ class Uri implements Xml\Element
 {
     /**
      * Uri element value.
-     *
-     * @var string
      */
-    protected $value;
+    protected string $value;
 
     /**
      * Constructor.
-     *
-     * @param string $value
      */
-    public function __construct($value)
+    public function __construct(string $value)
     {
         $this->value = $value;
     }
@@ -57,11 +55,11 @@ class Uri implements Xml\Element
      *
      * If you are opening new elements, you must also close them again.
      */
-    public function xmlSerialize(Xml\Writer $writer)
+    public function xmlSerialize(Xml\Writer $writer): void
     {
         $writer->text(
-            \Sabre\Uri\resolve(
-                $writer->contextUri,
+            resolve(
+                $writer->contextUri ?? '',
                 $this->value
             )
         );
@@ -84,13 +82,11 @@ class Uri implements Xml\Element
      *
      * $reader->parseSubTree() will parse the entire sub-tree, and advance to
      * the next element.
-     *
-     * @return mixed
      */
     public static function xmlDeserialize(Xml\Reader $reader)
     {
         return new self(
-            \Sabre\Uri\resolve(
+            resolve(
                 (string) $reader->contextUri,
                 $reader->readText()
             )

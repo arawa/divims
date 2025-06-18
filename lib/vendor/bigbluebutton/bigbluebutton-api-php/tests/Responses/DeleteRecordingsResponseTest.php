@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,36 +15,39 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
-namespace BigBlueButton\Parameters;
 
-use BigBlueButton\Responses\DeleteRecordingsResponse;
+namespace BigBlueButton\Responses;
+
 use BigBlueButton\TestCase;
+use BigBlueButton\TestServices\Fixtures;
 
+/**
+ * @internal
+ */
 class DeleteRecordingsResponseTest extends TestCase
 {
-    /**
-     * @var \BigBlueButton\Responses\DeleteRecordingsResponse
-     */
-    private $delete;
+    private DeleteRecordingsResponse $delete;
 
     public function setUp(): void
     {
         parent::setUp();
 
-        $xml = $this->loadXmlFile(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'delete_recordings.xml');
+        $fixtures = new Fixtures();
+
+        $xml = $fixtures->fromXmlFile('delete_recordings.xml');
 
         $this->delete = new DeleteRecordingsResponse($xml);
     }
 
-    public function testDeleteRecordingsResponseContent()
+    public function testDeleteRecordingsResponseContent(): void
     {
         $this->assertEquals('SUCCESS', $this->delete->getReturnCode());
-        $this->assertEquals(true, $this->delete->isDeleted());
+        $this->assertTrue($this->delete->isDeleted());
     }
 
-    public function testDeleteRecordingsResponseTypes()
+    public function testDeleteRecordingsResponseTypes(): void
     {
         $this->assertEachGetterValueIsString($this->delete, ['getReturnCode']);
         $this->assertEachGetterValueIsBoolean($this->delete, ['isDeleted']);

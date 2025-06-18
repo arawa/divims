@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,60 +15,42 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
+
 namespace BigBlueButton\Responses;
 
 /**
- * Class JoinMeetingResponse
- * @package BigBlueButton\Responses
+ * Class JoinMeetingResponse.
  */
 class JoinMeetingResponse extends BaseResponse
 {
-    /**
-     * @return string
-     */
-    public function getMeetingId()
+    public function getMeetingId(): string
     {
         return $this->rawXml->meeting_id->__toString();
     }
 
-    /**
-     * @return string
-     */
-    public function getUserId()
+    public function getUserId(): string
     {
         return $this->rawXml->user_id->__toString();
     }
 
-    /**
-     * @return string
-     */
-    public function getAuthToken()
+    public function getAuthToken(): string
     {
         return $this->rawXml->auth_token->__toString();
     }
 
-    /**
-     * @return string
-     */
-    public function getSessionToken()
+    public function getSessionToken(): string
     {
         return $this->rawXml->session_token->__toString();
     }
 
-    /**
-     * @return string
-     */
-    public function getGuestStatus()
+    public function getGuestStatus(): string
     {
         return $this->rawXml->guestStatus->__toString();
     }
 
-    /**
-     * @return string
-     */
-    public function getUrl()
+    public function getUrl(): string
     {
         return $this->rawXml->url->__toString();
     }

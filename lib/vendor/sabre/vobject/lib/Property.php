@@ -30,7 +30,7 @@ abstract class Property extends Node
      *
      * This is only used in vcards
      *
-     * @var string
+     * @var string|null
      */
     public $group;
 
@@ -57,6 +57,20 @@ abstract class Property extends Node
     public $delimiter = ';';
 
     /**
+     * The line number in the original iCalendar / vCard file
+     *   that corresponds with the current node
+     *   if the node was read from a file.
+     */
+    public $lineIndex;
+
+    /**
+     * The line string from the original iCalendar / vCard file
+     *   that corresponds with the current node
+     *   if the node was read from a file.
+     */
+    public $lineString;
+
+    /**
      * Creates the generic property.
      *
      * Parameters must be specified in key=>value syntax.
@@ -67,7 +81,7 @@ abstract class Property extends Node
      * @param array             $parameters List of parameters
      * @param string            $group      The vcard property group
      */
-    public function __construct(Component $root, $name, $value = null, array $parameters = [], $group = null)
+    public function __construct(Component $root, $name, $value = null, array $parameters = [], $group = null, ?int $lineIndex = null, ?string $lineString = null)
     {
         $this->name = $name;
         $this->group = $group;
@@ -80,6 +94,14 @@ abstract class Property extends Node
 
         if (!is_null($value)) {
             $this->setValue($value);
+        }
+
+        if (!is_null($lineIndex)) {
+            $this->lineIndex = $lineIndex;
+        }
+
+        if (!is_null($lineString)) {
+            $this->lineString = $lineString;
         }
     }
 
@@ -318,7 +340,7 @@ abstract class Property extends Node
      *
      * @param Xml\Writer $writer XML writer
      */
-    public function xmlSerialize(Xml\Writer $writer)
+    public function xmlSerialize(Xml\Writer $writer): void
     {
         $parameters = [];
 
@@ -435,6 +457,8 @@ abstract class Property extends Node
      *
      * @param string $name
      * @param mixed  $value
+     *
+     * @return void
      */
     #[\ReturnTypeWillChange]
     public function offsetSet($name, $value)
@@ -456,6 +480,8 @@ abstract class Property extends Node
      * Removes one or more parameters with the specified name.
      *
      * @param string $name
+     *
+     * @return void
      */
     #[\ReturnTypeWillChange]
     public function offsetUnset($name)

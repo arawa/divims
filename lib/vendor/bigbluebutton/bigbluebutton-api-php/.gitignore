@@ -1,11 +1,17 @@
 composer.phar
 /vendor/
+/var/
 composer.lock
 .DS_Store
+
+## local environment variables
+.env.local
 
 ## Directory-based project format:
 .idea/
 /nbproject
 
 # PHP CS Fixer cache file
-.php_cs.cache
+.php-cs-fixer.cache
+
+.phpunit.result.cache

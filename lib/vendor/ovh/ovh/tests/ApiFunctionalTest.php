@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2013-2017, OVH SAS.
+# Copyright (c) 2013-2025, OVH SAS.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,9 @@
 namespace Ovh\tests;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Ovh\Api;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Functional tests of Api class
@@ -36,7 +38,7 @@ use Ovh\Api;
  * @package  Ovh
  * @category Ovh
  */
-class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
+class ApiFunctionalTest extends TestCase
 {
 
     /**
@@ -82,8 +84,15 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
     /**
      * Define id to create object
      */
-    protected function setUp()
+    protected function setUp() :void
     {
+        foreach (['APP_KEY', 'APP_SECRET', 'CONSUMER', 'ENDPOINT'] as $envName) {
+            if (!getenv($envName)) {
+                $this->markTestSkipped("Skip test due to missing $envName variable");
+                return;
+            }
+        }
+
         $this->application_key    = getenv('APP_KEY');
         $this->application_secret = getenv('APP_SECRET');
         $this->consumer_key       = getenv('CONSUMER');
@@ -110,7 +119,7 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
      */
     protected static function getPrivateMethod($name)
     {
-        $class  = new \ReflectionClass('Ovh\Api');
+        $class  = new \ReflectionClass(\Ovh\Api::class);
         $method = $class->getMethod($name);
         $method->setAccessible(true);
 
@@ -126,7 +135,7 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
      */
     protected static function getPrivateProperty($name)
     {
-        $class    = new \ReflectionClass('Ovh\Api');
+        $class    = new \ReflectionClass(\Ovh\Api::class);
         $property = $class->getProperty($name);
         $property->setAccessible(true);
 
@@ -149,7 +158,7 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
         $credentials  = $this->api->requestCredentials($accessRules);
         $consumer_key = $property->getValue($this->api);
 
-        $this->assertEquals($consumer_key, $credentials["consumerKey"]);
+        $this->assertSame($consumer_key, $credentials["consumerKey"]);
         $this->assertNotEquals($consumer_key, $this->consumer_key);
     }
 
@@ -196,14 +205,18 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
     {
         $result = $this->api->get('/me/accessRestriction/ip');
 
-        $restrictionId = array_pop($result);
+        foreach ($result as $restrictionId) {
+            $restriction = $this->api->get('/me/accessRestriction/ip/' . $restrictionId);
 
-        $this->assertNull(
-            $this->api->put('/me/accessRestriction/ip/' . $restrictionId, ['rule' => 'accept', 'warning' => true])
-        );
+            if (in_array($restriction["ip"], [$this->rangeIP, $this->alternativeRangeIP])) {
+                $this->assertNull(
+                    $this->api->put('/me/accessRestriction/ip/' . $restrictionId, ['rule' => 'accept', 'warning' => true])
+                );
 
-        $restriction = $this->api->get('/me/accessRestriction/ip/' . $restrictionId);
-        $this->assertEquals('accept', $restriction['rule']);
+                $restriction = $this->api->get('/me/accessRestriction/ip/' . $restrictionId);
+                $this->assertSame('accept', $restriction['rule']);
+            }
+        }
     }
 
     /**
@@ -218,7 +231,6 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
             if (in_array($restriction["ip"], [$this->rangeIP, $this->alternativeRangeIP])) {
                 $result = $this->api->delete('/me/accessRestriction/ip/' . $restrictionId);
                 $this->assertNull($result);
-                break;
             }
         }
     }
@@ -230,7 +242,8 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
     {
         $api     = new Api($this->application_key, $this->application_secret, $this->endpoint, null, $this->client);
         $invoker = self::getPrivateMethod('rawCall');
-        $invoker->invokeArgs($api, ['GET', '/xdsl/incidents']);
+        $result = $invoker->invokeArgs($api, ['GET', '/xdsl/incidents']);
+        $this->assertIsObject($result);
     }
 
     /**
@@ -238,7 +251,7 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
      */
     public function testApiGetWithParameters()
     {
-        $this->setExpectedException('\\GuzzleHttp\\Exception\\ClientException', '400');
+        $this->expectException(ClientException::class);
 
         $this->api->get('/me/accessRestriction/ip', ['foo' => 'bar']);
     }
@@ -248,7 +261,8 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
      */
     public function testApiGetWithQueryString()
     {
-        $this->api->get('/me/api/credential', ['status' => 'pendingValidation']);
+        $result = $this->api->get('/me/api/credential', ['status' => 'pendingValidation']);
+        $this->assertIsArray($result);
     }
 
     /**
@@ -256,7 +270,8 @@ class ApiFunctionalTest extends \PHPUnit_Framework_TestCase
      */
     public function testApiGetWithoutAuthentication()
     {
-        $api = new Api(NULL,NULL, $this->endpoint, null, $this->client);
-        $api->get('/hosting/web/moduleList',null,null,false);
+        $api = new Api(null, null, $this->endpoint, null, $this->client);
+        $result = $api->get('/hosting/web/moduleList', null, null, false);
+        $this->assertIsArray($result);
     }
 }

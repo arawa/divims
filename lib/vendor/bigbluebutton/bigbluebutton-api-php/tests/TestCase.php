@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,36 +15,33 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
 
 namespace BigBlueButton;
 
-use BigBlueButton\Core\GuestPolicy;
-use BigBlueButton\Core\MeetingLayout;
-use BigBlueButton\Parameters\CreateMeetingParameters as CreateMeetingParameters;
+use BigBlueButton\Enum\Feature;
+use BigBlueButton\Enum\GuestPolicy;
+use BigBlueButton\Enum\MeetingLayout;
+use BigBlueButton\Enum\Role;
+use BigBlueButton\Parameters\CreateMeetingParameters;
 use BigBlueButton\Parameters\EndMeetingParameters;
-use BigBlueButton\Parameters\JoinMeetingParameters as JoinMeetingParameters;
-use BigBlueButton\Parameters\UpdateRecordingsParameters as UpdateRecordingsParameters;
+use BigBlueButton\Parameters\JoinMeetingParameters;
 use BigBlueButton\Responses\CreateMeetingResponse;
 use BigBlueButton\Responses\UpdateRecordingsResponse;
+use BigBlueButton\TestServices\Fixtures;
 use Faker\Factory as Faker;
-use Faker\Generator as Generator;
+use Faker\Generator;
 
 /**
- * Class TestCase
- * @package BigBlueButton
+ * Class TestCase.
+ *
+ * @internal
  */
 class TestCase extends \PHPUnit\Framework\TestCase
 {
-    /**
-     * @var Generator
-     */
-    protected $faker;
+    protected Generator $faker;
 
-    /**
-     * {@inheritdoc}
-     */
     public function setUp(): void
     {
         parent::setUp();
@@ -51,22 +49,107 @@ class TestCase extends \PHPUnit\Framework\TestCase
         $this->faker = Faker::create();
     }
 
+    // Additional assertions
+
     /**
-     * @param $bbb BigBlueButton
-     * @return CreateMeetingResponse
+     * @param mixed $actual
      */
-    protected function createRealMeeting($bbb)
+    public function assertIsInteger($actual, string $message = ''): void
     {
-        $createMeetingParams = $this->generateCreateParams();
-        $createMeetingMock   = $this->getCreateMock($createMeetingParams);
+        if (empty($message)) {
+            $message = 'Got a ' . gettype($actual) . ' instead of an integer.';
+        }
+        $this->assertTrue(is_integer($actual), $message);
+    }
+
+    /**
+     * @param mixed $actual
+     */
+    public function assertIsDouble($actual, string $message = ''): void
+    {
+        if (empty($message)) {
+            $message = 'Got a ' . gettype($actual) . ' instead of a double.';
+        }
+        $this->assertTrue(is_double($actual), $message);
+    }
+
+    /**
+     * @param mixed $actual
+     */
+    public function assertIsBoolean($actual, string $message = ''): void
+    {
+        if (empty($message)) {
+            $message = 'Got a ' . gettype($actual) . ' instead of a boolean.';
+        }
+        $this->assertTrue(is_bool($actual), $message);
+    }
+
+    /**
+     * @param mixed              $obj
+     * @param array<int, string> $getters
+     */
+    public function assertEachGetterValueIsString($obj, array $getters): void
+    {
+        foreach ($getters as $getterName) {
+            $this->assertIsString($obj->{$getterName}(), 'Got a ' . gettype($obj->{$getterName}()) . ' instead of a string for property -> ' . $getterName);
+        }
+    }
+
+    /**
+     * @param mixed              $obj
+     * @param array<int, string> $getters
+     */
+    public function assertEachGetterValueIsInteger($obj, array $getters): void
+    {
+        foreach ($getters as $getterName) {
+            $this->assertIsInteger($obj->{$getterName}(), 'Got a ' . gettype($obj->{$getterName}()) . ' instead of an integer for property -> ' . $getterName);
+        }
+    }
+
+    /**
+     * @param mixed              $obj
+     * @param array<int, string> $getters
+     */
+    public function assertEachGetterValueIsNull($obj, array $getters): void
+    {
+        foreach ($getters as $getterName) {
+            $this->assertNull($obj->{$getterName}(), 'Got a ' . gettype($obj->{$getterName}()) . ' instead of NULL for property -> ' . $getterName);
+        }
+    }
+
+    /**
+     * @param mixed              $obj
+     * @param array<int, string> $getters
+     */
+    public function assertEachGetterValueIsDouble($obj, array $getters): void
+    {
+        foreach ($getters as $getterName) {
+            $this->assertIsDouble($obj->{$getterName}(), 'Got a ' . gettype($obj->{$getterName}()) . ' instead of a double for property -> ' . $getterName);
+        }
+    }
+
+    /**
+     * @param mixed              $obj
+     * @param array<int, string> $getters
+     */
+    public function assertEachGetterValueIsBoolean($obj, array $getters): void
+    {
+        foreach ($getters as $getterName) {
+            $this->assertIsBoolean($obj->{$getterName}(), 'Got a ' . gettype($obj->{$getterName}()) . ' instead of a boolean for property -> ' . $getterName);
+        }
+    }
+
+    protected function createRealMeeting(BigBlueButton $bbb): CreateMeetingResponse
+    {
+        $createMeetingMock = Fixtures::getCreateMeetingParametersMock(Fixtures::generateCreateParams());
 
         return $bbb->createMeeting($createMeetingMock);
     }
 
     /**
-     * @return array
+     * @return array<string, mixed>
      */
-    protected function generateCreateParams()
+    protected function generateCreateParams(): array
     {
         return [
             'meetingName'                            => $this->faker->name,
@@ -97,49 +180,85 @@ class TestCase extends \PHPUnit\Framework\TestCase
             'lockSettingsLockedLayout'               => $this->faker->boolean(50),
             'lockSettingsLockOnJoin'                 => $this->faker->boolean(50),
             'lockSettingsLockOnJoinConfigurable'     => $this->faker->boolean(50),
+            'lockSettingsHideViewersCursor'          => $this->faker->boolean(50),
             'allowModsToUnmuteUsers'                 => $this->faker->boolean(50),
             'allowModsToEjectCameras'                => $this->faker->boolean(50),
-            'guestPolicy'                            => $this->faker->randomElement([GuestPolicy::ALWAYS_ACCEPT, GuestPolicy::ALWAYS_DENY, GuestPolicy::ASK_MODERATOR]),
+            'guestPolicy'                            => $this->faker->randomElement(GuestPolicy::getValues()),
             'endWhenNoModerator'                     => $this->faker->boolean(50),
             'endWhenNoModeratorDelayInMinutes'       => $this->faker->numberBetween(1, 30),
             'meetingKeepEvents'                      => $this->faker->boolean(50),
             'learningDashboardEnabled'               => $this->faker->boolean(50),
+            'virtualBackgroundsDisabled'             => $this->faker->boolean(50),
             'learningDashboardCleanupDelayInMinutes' => $this->faker->numberBetween(1, 30),
+            'allowRequestsWithoutSession'            => $this->faker->boolean(50),
+            'userCameraCap'                          => $this->faker->numberBetween(1, 5),
             'bannerText'                             => $this->faker->sentence,
             'bannerColor'                            => $this->faker->hexColor,
             'breakoutRoomsEnabled'                   => $this->faker->boolean(50),
             'breakoutRoomsRecord'                    => $this->faker->boolean(50),
             'breakoutRoomsPrivateChatEnabled'        => $this->faker->boolean(50),
             'meetingEndedURL'                        => $this->faker->url,
-            'meetingLayout'                          => $this->faker->randomElement([MeetingLayout::CUSTOM_LAYOUT, MeetingLayout::SMART_LAYOUT, MeetingLayout::PRESENTATION_FOCUS, MeetingLayout::VIDEO_FOCUS]),
+            'meetingLayout'                          => $this->faker->randomElement(MeetingLayout::getValues()),
+            'meetingCameraCap'                       => $this->faker->numberBetween(1, 3),
+            'meetingExpireIfNoUserJoinedInMinutes'   => $this->faker->numberBetween(1, 10),
+            'meetingExpireWhenLastUserLeftInMinutes' => $this->faker->numberBetween(5, 15),
+            'preUploadedPresentationOverrideDefault' => $this->faker->boolean,
+            'groups'                                 => $this->generateBreakoutRoomsGroups(),
+            'disabledFeatures'                       => $this->faker->randomElements(Feature::getValues()),
+            'disabledFeaturesExclude'                => $this->faker->randomElements(Feature::getValues()),
             'meta_presenter'                         => $this->faker->name,
             'meta_endCallbackUrl'                    => $this->faker->url,
             'meta_bbb-recording-ready-url'           => $this->faker->url,
+            'notifyRecordingIsOn'                    => $this->faker->boolean(50),
+            'presentationUploadExternalUrl'          => $this->faker->url,
+            'presentationUploadExternalDescription'  => $this->faker->text,
+            'recordFullDurationMedia'                => $this->faker->boolean(50),
         ];
     }
 
     /**
-     * @param $createParams
-     * @return array
+     * @return array<int, array<string, mixed>>
      */
-    protected function generateBreakoutCreateParams($createParams)
+    protected function generateBreakoutRoomsGroups(): array
+    {
+        $br     = $this->faker->numberBetween(0, 8);
+        $groups = [];
+        for ($i = 0; $i <= $br; ++$i) {
+            $groups[] = [
+                'id'     => $this->faker->uuid,
+                'name'   => $this->faker->name,
+                'roster' => $this->faker->randomElements,
+            ];
+        }
+
+        return $groups;
+    }
+
+    /**
+     * @param mixed $createParams
+     *
+     * @return array<string, mixed>
+     */
+    protected function generateBreakoutCreateParams($createParams): array
     {
         return array_merge($createParams, [
             'isBreakout'      => true,
             'parentMeetingId' => $this->faker->uuid,
             'sequence'        => $this->faker->numberBetween(1, 8),
-            'freeJoin'        => $this->faker->boolean(50)
+            'freeJoin'        => $this->faker->boolean(50),
         ]);
     }
 
     /**
-     * @param $params array
-     *
-     * @return CreateMeetingParameters
+     * @param array<string, mixed> $params
      */
-    protected function getCreateMock($params)
+    protected function getCreateMock(array $params): CreateMeetingParameters
     {
         $createMeetingParams = new CreateMeetingParameters($params['meetingId'], $params['meetingName']);
+
+        foreach ($params['groups'] as $group) {
+            $createMeetingParams->addBreakoutRoomsGroup($group['id'], $group['name'], $group['roster']);
+        }
 
         return $createMeetingParams
             ->setAttendeePassword($params['attendeePassword'])
@@ -159,6 +278,7 @@ class TestCase extends \PHPUnit\Framework\TestCase
             ->setLogo($params['logo'])
             ->setCopyright($params['copyright'])
             ->setEndCallbackUrl($params['meta_endCallbackUrl'])
+            ->setRecordingReadyCallbackUrl($params['meta_bbb-recording-ready-url'])
             ->setMuteOnStart($params['muteOnStart'])
             ->setLockSettingsDisableCam($params['lockSettingsDisableCam'])
             ->setLockSettingsDisableMic($params['lockSettingsDisableMic'])
@@ -169,6 +289,7 @@ class TestCase extends \PHPUnit\Framework\TestCase
             ->setLockSettingsLockedLayout($params['lockSettingsLockedLayout'])
             ->setLockSettingsLockOnJoin($params['lockSettingsLockOnJoin'])
             ->setLockSettingsLockOnJoinConfigurable($params['lockSettingsLockOnJoinConfigurable'])
+            ->setLockSettingsHideViewersCursor($params['lockSettingsHideViewersCursor'])
             ->setEndWhenNoModerator($params['endWhenNoModerator'])
             ->setEndWhenNoModeratorDelayInMinutes($params['endWhenNoModeratorDelayInMinutes'])
             ->setAllowModsToUnmuteUsers($params['allowModsToUnmuteUsers'])
@@ -176,6 +297,7 @@ class TestCase extends \PHPUnit\Framework\TestCase
             ->setGuestPolicy($params['guestPolicy'])
             ->setMeetingKeepEvents($params['meetingKeepEvents'])
             ->setLearningDashboardEnabled($params['learningDashboardEnabled'])
+            ->setVirtualBackgroundsDisabled($params['virtualBackgroundsDisabled'])
             ->setLearningDashboardCleanupDelayInMinutes($params['learningDashboardCleanupDelayInMinutes'])
             ->setBannerColor($params['bannerColor'])
             ->setBannerText($params['bannerText'])
@@ -184,16 +306,27 @@ class TestCase extends \PHPUnit\Framework\TestCase
             ->setBreakoutRoomsPrivateChatEnabled($params['breakoutRoomsPrivateChatEnabled'])
             ->setMeetingEndedURL($params['meetingEndedURL'])
             ->setMeetingLayout($params['meetingLayout'])
+            ->setAllowRequestsWithoutSession($params['allowRequestsWithoutSession'])
+            ->setUserCameraCap($params['userCameraCap'])
+            ->setMeetingCameraCap($params['meetingCameraCap'])
+            ->setMeetingExpireIfNoUserJoinedInMinutes($params['meetingExpireIfNoUserJoinedInMinutes'])
+            ->setMeetingExpireWhenLastUserLeftInMinutes($params['meetingExpireWhenLastUserLeftInMinutes'])
+            ->setPreUploadedPresentationOverrideDefault($params['preUploadedPresentationOverrideDefault'])
+            ->setDisabledFeatures($params['disabledFeatures'])
+            ->setDisabledFeaturesExclude($params['disabledFeaturesExclude'])
+            ->setRecordFullDurationMedia($params['recordFullDurationMedia'])
             ->addMeta('presenter', $params['meta_presenter'])
-            ->addMeta('bbb-recording-ready-url', $params['meta_bbb-recording-ready-url']);
+            ->addMeta('bbb-recording-ready-url', $params['meta_bbb-recording-ready-url'])
+            ->setNotifyRecordingIsOn($params['notifyRecordingIsOn'])
+            ->setPresentationUploadExternalUrl($params['presentationUploadExternalUrl'])
+            ->setPresentationUploadExternalDescription($params['presentationUploadExternalDescription'])
+        ;
     }
 
     /**
-     * @param $params
-     *
-     * @return CreateMeetingParameters
+     * @param mixed $params
      */
-    protected function getBreakoutCreateMock($params)
+    protected function getBreakoutCreateMock($params): CreateMeetingParameters
     {
         $createMeetingParams = $this->getCreateMock($params);
 
@@ -202,153 +335,79 @@ class TestCase extends \PHPUnit\Framework\TestCase
     }
 
     /**
-     * @return array
+     * @return array<string, mixed>
      */
-    protected function generateJoinMeetingParams()
+    protected function generateJoinMeetingParams(): array
     {
-        return ['meetingId'        => $this->faker->uuid,
+        return [
+            'meetingId'            => $this->faker->uuid,
             'userName'             => $this->faker->name,
             'password'             => $this->faker->password,
             'userId'               => $this->faker->numberBetween(1, 1000),
             'webVoiceConf'         => $this->faker->word,
             'creationTime'         => $this->faker->unixTime,
+            'role'                 => $this->faker->randomElement(Role::getValues()),
+            'excludeFromDashboard' => $this->faker->boolean,
             'userdata_countrycode' => $this->faker->countryCode,
             'userdata_email'       => $this->faker->email,
-            'userdata_commercial'  => false
+            'userdata_commercial'  => false,
         ];
     }
 
     /**
-     * @param $params array
-     *
-     * @return JoinMeetingParameters
+     * @param array<string, mixed> $params
      */
-    protected function getJoinMeetingMock($params)
+    protected function getJoinMeetingMock(array $params): JoinMeetingParameters
     {
         $joinMeetingParams = new JoinMeetingParameters($params['meetingId'], $params['userName'], $params['password']);
 
-        return $joinMeetingParams->setUserId($params['userId'])->setWebVoiceConf($params['webVoiceConf'])
-            ->setCreationTime($params['creationTime'])->addUserData('countrycode', $params['userdata_countrycode'])
-            ->addUserData('email', $params['userdata_email'])->addUserData('commercial', $params['userdata_commercial']);
+        return $joinMeetingParams
+            ->setUserId($params['userId'])
+            ->setWebVoiceConf($params['webVoiceConf'])
+            ->setCreationTime($params['creationTime'])
+            ->setRole($params['role'])
+            ->setExcludeFromDashboard($params['excludeFromDashboard'])
+            ->addUserData('countrycode', $params['userdata_countrycode'])
+            ->addUserData('email', $params['userdata_email'])
+            ->addUserData('commercial', $params['userdata_commercial'])
+        ;
     }
 
     /**
-     * @return array
+     * @return array<string, string>
      */
-    protected function generateEndMeetingParams()
+    protected function generateEndMeetingParams(): array
     {
-        return ['meetingId' => $this->faker->uuid,
-            'password'      => $this->faker->password];
+        return [
+            'meetingId' => $this->faker->uuid,
+            'password'  => $this->faker->password,
+        ];
     }
 
     /**
-     * @param $params array
-     *
-     * @return EndMeetingParameters
+     * @param array<string, string> $params
      */
-    protected function getEndMeetingMock($params)
+    protected function getEndMeetingMock(array $params): EndMeetingParameters
     {
         return new EndMeetingParameters($params['meetingId'], $params['password']);
     }
 
-    /**
-     * @param $bbb BigBlueButton
-     * @return UpdateRecordingsResponse
-     */
-    protected function updateRecordings($bbb)
+    protected function updateRecordings(BigBlueButton $bbb): UpdateRecordingsResponse
     {
-        $updateRecordingsParams = $this->generateUpdateRecordingsParams();
-        $updateRecordingsMock   = $this->getUpdateRecordingsParamsMock($updateRecordingsParams);
+        $updateRecordingsParams = Fixtures::generateUpdateRecordingsParams();
+        $updateRecordingsMock   = Fixtures::getUpdateRecordingsParamsMock($updateRecordingsParams);
 
         return $bbb->updateRecordings($updateRecordingsMock);
     }
 
-    /**
-     * @return array
-     */
-    protected function generateUpdateRecordingsParams()
+    protected function minifyString(string $string): string
     {
-        return [
-            'recordingId'    => $this->faker->uuid,
-            'meta_presenter' => $this->faker->name,
-        ];
-    }
+        $minifiedString = str_replace(["\r\n", "\r", "\n", "\t", ' '], '', $string);
 
-    /**
-     * @param $params array
-     *
-     * @return UpdateRecordingsParameters
-     */
-    protected function getUpdateRecordingsParamsMock($params)
-    {
-        $updateRecordingsParams = new UpdateRecordingsParameters($params['recordingId']);
-
-        return $updateRecordingsParams->addMeta('presenter', $params['meta_presenter']);
-    }
-
-    // Load fixtures
-
-    protected function loadXmlFile($path)
-    {
-        return simplexml_load_string(file_get_contents(($path)));
-    }
-
-    protected function minifyString($string)
-    {
-        return str_replace(["\r\n", "\r", "\n", "\t", ' '], '', $string);
-    }
-
-    // Additional assertions
-
-    public function assertIsInteger($actual, $message = '')
-    {
-        if (empty($message)) {
-            $message = 'Got a ' . gettype($actual) . ' instead of an integer.';
+        if (!is_string($minifiedString)) {
+            throw new \RuntimeException('String expected, but not received.');
         }
-        $this->assertTrue(is_integer($actual), $message);
-    }
 
-    public function assertIsDouble($actual, $message = '')
-    {
-        if (empty($message)) {
-            $message = 'Got a ' . gettype($actual) . ' instead of a double.';
-        }
-        $this->assertTrue(is_double($actual), $message);
-    }
-
-    public function assertIsBoolean($actual, $message = '')
-    {
-        if (empty($message)) {
-            $message = 'Got a ' . gettype($actual) . ' instead of a boolean.';
-        }
-        $this->assertTrue(is_bool($actual), $message);
-    }
-
-    public function assertEachGetterValueIsString($obj, $getters)
-    {
-        foreach ($getters as $getterName) {
-            $this->assertIsString($obj->$getterName(), 'Got a ' . gettype($obj->$getterName()) . ' instead of a string for property -> ' . $getterName);
-        }
-    }
-
-    public function assertEachGetterValueIsInteger($obj, $getters)
-    {
-        foreach ($getters as $getterName) {
-            $this->assertIsInteger($obj->$getterName(), 'Got a ' . gettype($obj->$getterName()) . ' instead of an integer for property -> ' . $getterName);
-        }
-    }
-
-    public function assertEachGetterValueIsDouble($obj, $getters)
-    {
-        foreach ($getters as $getterName) {
-            $this->assertIsDouble($obj->$getterName(), 'Got a ' . gettype($obj->$getterName()) . ' instead of a double for property -> ' . $getterName);
-        }
-    }
-
-    public function assertEachGetterValueIsBoolean($obj, $getters)
-    {
-        foreach ($getters as $getterName) {
-            $this->assertIsBoolean($obj->$getterName(), 'Got a ' . gettype($obj->$getterName()) . ' instead of a boolean for property -> ' . $getterName);
-        }
+        return $minifiedString;
     }
 }
