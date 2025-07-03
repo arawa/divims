@@ -1558,9 +1558,9 @@ class ServersPool
         $meetings_variation_ratio = round($meetings_count / intval($past_load_data['meetings_count']), 2);
 
         $this->logger->info("Variation ratios", compact('participants_variation_ratio', 'meetings_variation_ratio'));
-
-        $participants_load_ratio = @round(($participants_count / $participants_capacity) * 100, 1) . "%";
-        $meetings_load_ratio = @round(($meetings_count / $meetings_capacity) * 100, 1) . "%";
+        
+        $participants_load_ratio = ($participants_capacity == 0) ? 100 : round(($participants_count / $participants_capacity) * 100, 1) . "%";
+        $meetings_load_ratio = ($meetings_capacity == 0) ? 100 : round(($meetings_count / $meetings_capacity) * 100, 1) . "%";
 
         $this->logger->info("Load ratios", compact('participants_load_ratio', 'meetings_load_ratio'));
 
