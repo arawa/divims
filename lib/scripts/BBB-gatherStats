@@ -64,7 +64,7 @@ else
     last_check_seconds=$(( $(date '+%s') - $(date -d $timestamp '+%s') ))
     if [[ $last_check_seconds -gt 600 ]]; then
       result="ERROR: last check failed to proceed or timed out"
-    elif [[ $check -ne 0]]; then
+    elif [[ $check -ne 0 ]]; then
       result="ERROR: check failed with value $check"
     else
       result=OK

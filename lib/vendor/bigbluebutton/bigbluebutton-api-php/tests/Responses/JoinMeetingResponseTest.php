@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,30 +15,32 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
-namespace BigBlueButton\Parameters;
 
-use BigBlueButton\Responses\JoinMeetingResponse;
+namespace BigBlueButton\Responses;
+
 use BigBlueButton\TestCase;
+use BigBlueButton\TestServices\Fixtures;
 
+/**
+ * @internal
+ */
 class JoinMeetingResponseTest extends TestCase
 {
-    /**
-     * @var \BigBlueButton\Responses\JoinMeetingResponse
-     */
-    private $joinMeeting;
+    private JoinMeetingResponse $joinMeeting;
 
     public function setUp(): void
     {
         parent::setUp();
+        $fixtures = new Fixtures();
 
-        $xml = $this->loadXmlFile(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'join_meeting.xml');
+        $xml = $fixtures->fromXmlFile('join_meeting.xml');
 
         $this->joinMeeting = new JoinMeetingResponse($xml);
     }
 
-    public function testJoinMeetingResponseContent()
+    public function testJoinMeetingResponseContent(): void
     {
         $this->assertEquals('SUCCESS', $this->joinMeeting->getReturnCode());
         $this->assertEquals('successfullyJoined', $this->joinMeeting->getMessageKey());
@@ -50,7 +53,7 @@ class JoinMeetingResponseTest extends TestCase
         $this->assertEquals('https://bigblubutton-server.sample/client/BigBlueButton.html?sessionToken=0wzsph6uaelwc68z', $this->joinMeeting->getUrl());
     }
 
-    public function testJoinMeetingResponseTypes()
+    public function testJoinMeetingResponseTypes(): void
     {
         $this->assertEachGetterValueIsString($this->joinMeeting, ['getReturnCode', 'getMessageKey', 'getMessage', 'getMeetingId', 'getUserId', 'getAuthToken', 'getSessionToken', 'getGuestStatus', 'getUrl']);
     }

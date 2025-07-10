@@ -16,5 +16,5 @@ class Version
     /**
      * Full version number.
      */
-    const VERSION = '2.2.5';
+    public const VERSION = '4.0.6';
 }

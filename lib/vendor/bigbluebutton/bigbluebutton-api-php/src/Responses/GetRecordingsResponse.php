@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,35 +15,31 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
+
 namespace BigBlueButton\Responses;
 
 use BigBlueButton\Core\Record;
 
 /**
- * Class GetRecordingsResponse
- * @package BigBlueButton\Responses
+ * Class GetRecordingsResponse.
  */
 class GetRecordingsResponse extends BaseResponse
 {
     /**
-     * @var Record[]
-     */
-    private $records;
-
-    /**
      * @return Record[]
      */
-    public function getRecords()
+    public function getRecords(): array
     {
-        if ($this->records === null) {
-            $this->records = [];
-            foreach ($this->rawXml->recordings->children() as $recordXml) {
-                $this->records[] = new Record($recordXml);
+        $records = [];
+
+        foreach ($this->rawXml->recordings->children() as $recordXml) {
+            if ($recordXml) {
+                $records[] = new Record($recordXml);
             }
         }
 
-        return $this->records;
+        return $records;
     }
 }

@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,8 +15,9 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
+
 namespace BigBlueButton\Parameters;
 
 /**
@@ -23,18 +25,13 @@ namespace BigBlueButton\Parameters;
  */
 abstract class BaseParameters
 {
-    /**
-     * @param $array
-     *
-     * @return string
-     */
-    protected function buildHTTPQuery($array)
-    {
-        return http_build_query(array_filter($array));
-    }
+    abstract public function getHTTPQuery(): string;
 
     /**
-     * @return string
+     * @param mixed $array
      */
-    abstract public function getHTTPQuery();
+    protected function buildHTTPQuery($array): string
+    {
+        return str_replace(['%20', '!', "'", '(', ')', '*'], ['+', '%21', '%27', '%28', '%29', '%2A'], http_build_query(array_filter($array), '', '&', \PHP_QUERY_RFC3986));
+    }
 }

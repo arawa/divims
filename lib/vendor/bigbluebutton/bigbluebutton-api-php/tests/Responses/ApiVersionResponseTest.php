@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,39 +15,42 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
-namespace BigBlueButton\Parameters;
 
-use BigBlueButton\Responses\ApiVersionResponse;
+namespace BigBlueButton\Responses;
+
 use BigBlueButton\TestCase;
+use BigBlueButton\TestServices\Fixtures;
 
+/**
+ * @internal
+ */
 class ApiVersionResponseTest extends TestCase
 {
-    /**
-     * @var \BigBlueButton\Responses\ApiVersionResponse
-     */
-    private $version;
+    private ApiVersionResponse $apiVersionResponse;
 
     public function setUp(): void
     {
         parent::setUp();
 
-        $xml = $this->loadXmlFile(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'api_version.xml');
+        $fixtures = new Fixtures();
 
-        $this->version = new ApiVersionResponse($xml);
+        $xml = $fixtures->fromXmlFile('api_version.xml');
+
+        $this->apiVersionResponse = new ApiVersionResponse($xml);
     }
 
-    public function testApiVersionResponseContent()
+    public function testApiVersionResponseContent(): void
     {
-        $this->assertEquals('SUCCESS', $this->version->getReturnCode());
-        $this->assertEquals('2.0', $this->version->getVersion());
-        $this->assertEquals('2.0', $this->version->getApiVersion());
-        $this->assertEquals('2.4-rc-7', $this->version->getBbbVersion());
+        $this->assertEquals('SUCCESS', $this->apiVersionResponse->getReturnCode());
+        $this->assertEquals('2.0', $this->apiVersionResponse->getVersion());
+        $this->assertEquals('2.0', $this->apiVersionResponse->getApiVersion());
+        $this->assertEquals('2.4-rc-7', $this->apiVersionResponse->getBbbVersion());
     }
 
-    public function testApiVersionResponseTypes()
+    public function testApiVersionResponseTypes(): void
     {
-        $this->assertEachGetterValueIsString($this->version, ['getReturnCode', 'getVersion', 'getApiVersion', 'getBbbVersion']);
+        $this->assertEachGetterValueIsString($this->apiVersionResponse, ['getReturnCode', 'getVersion', 'getApiVersion', 'getBbbVersion']);
     }
 }

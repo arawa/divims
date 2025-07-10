@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,54 +15,36 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
+
 namespace BigBlueButton\Parameters;
 
 class HooksDestroyParameters extends BaseParameters
 {
+    private int $hookId;
 
-    /**
-     * @var string
-     */
-    private $hookId;
-
-    /**
-     * HooksDestroyParameters constructor.
-     *
-     * @param $hookId
-     */
-    public function __construct($hookId)
+    public function __construct(int $hookId)
     {
-        $this->hookId  = $hookId;
+        $this->hookId = $hookId;
     }
 
-    /**
-     * @return string
-     */
-    public function getHookId()
+    public function getHookId(): int
     {
         return $this->hookId;
     }
 
-    /**
-     * @param  string                 $hookId
-     * @return HooksDestroyParameters
-     */
-    public function setHookId($hookId)
+    public function setHookId(int $hookId): self
     {
         $this->hookId = $hookId;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getHTTPQuery()
+    public function getHTTPQuery(): string
     {
         $queries = [
-            'hookID' => $this->hookId
+            'hookID' => $this->hookId,
         ];
 
         return $this->buildHTTPQuery($queries);

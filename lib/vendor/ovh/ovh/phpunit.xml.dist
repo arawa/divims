@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit colors="true" bootstrap="tests/bootstrap.php">
-    <testsuites>
-        <testsuite name="OVH APIs wrapper">
-            <directory>tests</directory>
-        </testsuite>
-    </testsuites>
-    <php>
-        <env name="ENDPOINT" value=""/>
-        <env name="APP_KEY" value=""/>
-        <env name="APP_SECRET" value=""/>
-        <env name="CONSUMER" value=""/>
-    </php>
-    <filter>
-        <whitelist>
-            <directory>src</directory>
-        </whitelist>
-    </filter>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+    bootstrap="./vendor/autoload.php"
+    colors="true"
+    cacheDirectory=".phpunit.cache"
+    failOnEmptyTestSuite="true"
+    failOnWarning="true"
+    failOnRisky="true"
+    failOnDeprecation="true"
+    failOnPhpunitDeprecation="true"
+    failOnNotice="true"
+    failOnIncomplete="true"
+    >
+  <testsuites>
+    <testsuite name="all">
+      <directory>./tests</directory>
+    </testsuite>
+  </testsuites>
+  <coverage>
+    <report>
+      <clover outputFile="build/logs/clover.xml"/>
+      <html outputDirectory="build/coverage"/>
+      <text outputFile="php://stdout"/>
+    </report>
+  </coverage>
+  <logging>
+    <junit outputFile="build/report.junit.xml"/>
+  </logging>
+  <source>
+    <include>
+      <directory suffix=".php">src/</directory>
+    </include>
+  </source>
 </phpunit>

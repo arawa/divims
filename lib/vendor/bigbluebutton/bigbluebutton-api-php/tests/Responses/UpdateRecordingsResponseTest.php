@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,36 +15,39 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
-namespace BigBlueButton\Parameters;
 
-use BigBlueButton\Responses\UpdateRecordingsResponse;
+namespace BigBlueButton\Responses;
+
 use BigBlueButton\TestCase;
+use BigBlueButton\TestServices\Fixtures;
 
+/**
+ * @internal
+ */
 class UpdateRecordingsResponseTest extends TestCase
 {
-    /**
-     * @var \BigBlueButton\Responses\UpdateRecordingsResponse
-     */
-    private $update;
+    private UpdateRecordingsResponse $update;
 
     public function setUp(): void
     {
         parent::setUp();
 
-        $xml = $this->loadXmlFile(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'update_recordings.xml');
+        $fixtures = new Fixtures();
+
+        $xml = $fixtures->fromXmlFile('update_recordings.xml');
 
         $this->update = new UpdateRecordingsResponse($xml);
     }
 
-    public function testUpdateRecordingsResponseContent()
+    public function testUpdateRecordingsResponseContent(): void
     {
         $this->assertEquals('SUCCESS', $this->update->getReturnCode());
-        $this->assertEquals(true, $this->update->isUpdated());
+        $this->assertTrue($this->update->isUpdated());
     }
 
-    public function testUpdateRecordingsResponseTypes()
+    public function testUpdateRecordingsResponseTypes(): void
     {
         $this->assertEachGetterValueIsString($this->update, ['getReturnCode']);
         $this->assertEachGetterValueIsBoolean($this->update, ['isUpdated']);

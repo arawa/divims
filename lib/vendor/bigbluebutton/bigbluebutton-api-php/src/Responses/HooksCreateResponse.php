@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,37 +15,49 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
+
 namespace BigBlueButton\Responses;
 
 /**
- * Class GetRecordingsResponse
- * @package BigBlueButton\Responses
+ * Class GetRecordingsResponse.
  */
 class HooksCreateResponse extends BaseResponse
 {
     /**
-     * @return int
+     * According to documentation the hookId that needs to be used in the "destroy" command musst be of type number.
+     * That is why the return here must be a number (= integer) too.
+     *
+     * But in the same time this property could be not part of the API-response in case the response failed. So it has
+     * to return NULL as well.
+     *
+     * @see https://docs.bigbluebutton.org/development/webhooks/#hooksdestroy
      */
-    public function getHookId()
+    public function getHookId(): ?int
     {
+        if (!$this->rawXml->hookID) {
+            return null;
+        }
+
         return (int) $this->rawXml->hookID->__toString();
     }
 
-    /**
-     * @return bool
-     */
-    public function isPermanentHook()
+    public function isPermanentHook(): ?bool
     {
-        return $this->rawXml->permanentHook->__toString() === 'true';
+        if (!$this->rawXml->permanentHook) {
+            return null;
+        }
+
+        return 'true' === $this->rawXml->permanentHook->__toString();
     }
 
-    /**
-     * @return bool
-     */
-    public function hasRawData()
+    public function hasRawData(): ?bool
     {
-        return $this->rawXml->rawData->__toString() === 'true';
+        if (!$this->rawXml->rawData) {
+            return null;
+        }
+
+        return 'true' === $this->rawXml->rawData->__toString();
     }
 }

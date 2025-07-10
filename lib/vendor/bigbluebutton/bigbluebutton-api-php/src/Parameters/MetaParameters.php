@@ -1,8 +1,9 @@
 <?php
-/**
+
+/*
  * BigBlueButton open source conferencing system - https://www.bigbluebutton.org/.
  *
- * Copyright (c) 2016-2018 BigBlueButton Inc. and by respective authors (see below).
+ * Copyright (c) 2016-2024 BigBlueButton Inc. and by respective authors (see below).
  *
  * This program is free software; you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,37 +15,35 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along
- * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ * with BigBlueButton; if not, see <https://www.gnu.org/licenses/>.
  */
+
 namespace BigBlueButton\Parameters;
 
 /**
- * Class MetaParameters
- * @package BigBlueButton\Parameters
+ * Class MetaParameters.
  */
 abstract class MetaParameters extends BaseParameters
 {
     /**
-     * @var array
+     * @var array<string, mixed>
      */
-    private $meta = [];
+    private array $meta = [];
 
     /**
-     * @param $key
      * @return mixed
      */
-    public function getMeta($key)
+    public function getMeta(string $key)
     {
         return $this->meta[$key];
     }
 
     /**
-     * @param string $key
-     * @param string $value
+     * @param mixed $value
      *
      * @return $this
      */
-    public function addMeta($key, $value)
+    public function addMeta(string $key, $value)
     {
         $this->meta[$key] = $value;
 
@@ -52,17 +51,16 @@ abstract class MetaParameters extends BaseParameters
     }
 
     /**
-     * @param $queries
-     * @return void
+     * @param mixed $queries
      */
-    protected function buildMeta(&$queries)
+    protected function buildMeta(&$queries): void
     {
-        if (count($this->meta) !== 0) {
-            foreach ($this->meta as $k => $v) {
-                if (!is_bool($v)) {
-                    $queries['meta_' . $k] = $v;
+        if (0 !== count($this->meta)) {
+            foreach ($this->meta as $key => $value) {
+                if (!is_bool($value)) {
+                    $queries['meta_' . $key] = $value;
                 } else {
-                    $queries['meta_' . $k] = $v ? 'true' : 'false';
+                    $queries['meta_' . $key] = $value ? 'true' : 'false';
                 }
             }
         }

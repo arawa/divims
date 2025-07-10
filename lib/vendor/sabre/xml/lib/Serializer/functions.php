@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Sabre\Xml\Serializer;
 
-use InvalidArgumentException;
 use Sabre\Xml\Writer;
 use Sabre\Xml\XmlSerializable;
 
@@ -38,7 +37,7 @@ use Sabre\Xml\XmlSerializable;
  *
  * @param string[] $values
  */
-function enum(Writer $writer, array $values)
+function enum(Writer $writer, array $values): void
 {
     foreach ($values as $value) {
         $writer->writeElement($value);
@@ -48,15 +47,13 @@ function enum(Writer $writer, array $values)
 /**
  * The valueObject serializer turns a simple PHP object into a classname.
  *
- * Every public property will be encoded as an xml element with the same
+ * Every public property will be encoded as an XML element with the same
  * name, in the XML namespace as specified.
  *
  * Values that are set to null or an empty array are not serialized. To
  * serialize empty properties, you must specify them as an empty string.
- *
- * @param object $valueObject
  */
-function valueObject(Writer $writer, $valueObject, string $namespace)
+function valueObject(Writer $writer, object $valueObject, string $namespace): void
 {
     foreach (get_object_vars($valueObject) as $key => $val) {
         if (is_array($val)) {
@@ -85,8 +82,10 @@ function valueObject(Writer $writer, $valueObject, string $namespace)
  * and this could be called like this:
  *
  * repeatingElements($writer, $items, '{}item');
+ *
+ * @param array<int,mixed> $items
  */
-function repeatingElements(Writer $writer, array $items, string $childElementName)
+function repeatingElements(Writer $writer, array $items, string $childElementName): void
 {
     foreach ($items as $item) {
         $writer->writeElement($childElementName, $item);
@@ -104,7 +103,7 @@ function repeatingElements(Writer $writer, array $items, string $childElementNam
  *    calls it's xmlSerialize() method.
  * $value may be a PHP callback/function/closure, in case we call the callback
  *    and give it the Writer as an argument.
- * $value may be a an object, and if it's in the classMap we automatically call
+ * $value may be an object, and if it's in the classMap we automatically call
  *    the correct serializer for it.
  * $value may be null, in which case we do nothing.
  *
@@ -148,9 +147,9 @@ function repeatingElements(Writer $writer, array $items, string $childElementNam
  *
  * You can even mix the two array syntaxes.
  *
- * @param string|int|float|bool|array|object $value
+ * @param string|int|float|bool|array<int|string, mixed>|object $value
  */
-function standardSerializer(Writer $writer, $value)
+function standardSerializer(Writer $writer, $value): void
 {
     if (is_scalar($value)) {
         // String, integer, float, boolean
@@ -197,12 +196,12 @@ function standardSerializer(Writer $writer, $value)
                 $writer->write($item);
                 $writer->endElement();
             } else {
-                throw new InvalidArgumentException('The writer does not know how to serialize arrays with keys of type: '.gettype($name));
+                throw new \InvalidArgumentException('The writer does not know how to serialize arrays with keys of type: '.gettype($name));
             }
         }
     } elseif (is_object($value)) {
-        throw new InvalidArgumentException('The writer cannot serialize objects of class: '.get_class($value));
+        throw new \InvalidArgumentException('The writer cannot serialize objects of class: '.get_class($value));
     } elseif (!is_null($value)) {
-        throw new InvalidArgumentException('The writer cannot serialize values of type: '.gettype($value));
+        throw new \InvalidArgumentException('The writer cannot serialize values of type: '.gettype($value));
     }
 }
