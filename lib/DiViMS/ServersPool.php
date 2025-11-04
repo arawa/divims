@@ -195,8 +195,8 @@ class ServersPool
                 $servers[$domain]['custom_state'] = 'malfunctioning';
             }
 
-            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
-                // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
+            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 360) {
+                // Mark server as unresponsive if it is offline in Scalelite and running since at least 6 minutes
                 $log_context = compact('domain', 'bbb_status', 'divims_state');
                 if ($v['server_type'] == 'bare metal') {
                     $this->logger->error("Unresponsive bare metal server $domain detected. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", $log_context);
