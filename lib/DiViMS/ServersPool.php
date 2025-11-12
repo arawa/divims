@@ -800,6 +800,16 @@ class ServersPool
                         return false;
                     }
                     break;
+
+                case 'panic':
+                    $this->logger->info("Panic server in Scalelite", ['domain' => $domain, 'id' => $id]);
+                    if ($ssh->exec("$base_command servers:panic[$id,,true]", ['max_tries' => 3])) {
+                        return true;
+                    } else {
+                        $this->logger->error("Can not panic server $domain in Scalelite", ['domain' => $domain]);
+                        return false;
+                    }
+                    break;
             }
         }
 
@@ -1932,7 +1942,7 @@ class ServersPool
                 continue;
             }
 
-            // Poweroff 'running' servers
+            // Terminate 'running' servers
             // check for remaining sessions or processing recordings
             if ($v['hoster_state'] == 'running') {
                 // Check if server is running since at least 3 controller runs
@@ -2103,8 +2113,13 @@ class ServersPool
                 $enable_success_list = $this->scaleliteActOnServersList(['action' => 'enable', 'domains' => $servers_to_enable]);
             }
 
-            // Poweroff virtual machines at hoster
+            // Terminate virtual machines at hoster
             if (!empty($virtual_machines_to_terminate)) {
+                $panic_success_list = $this->scaleliteActOnServersList(['action' => 'panic', 'domains' => array_keys($virtual_machines_to_terminate)]);
+                if (count($virtual_machines_to_terminate) != count($panic_success_list)) {
+                    $this->logger->warning('Some servers could not be put in panic mode');
+                }
+
                 $terminated_servers = $this->hosterActOnServersList(['action' => 'terminate', 'domains' => array_keys($virtual_machines_to_terminate)]);
 
                 $not_terminated_servers = array_diff(array_keys($virtual_machines_to_terminate), $terminated_servers);
