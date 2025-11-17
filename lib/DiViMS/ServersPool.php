@@ -835,6 +835,9 @@ class ServersPool
             case 'disable':
                 $state = 'disabled';
                 break;
+            case 'panic':
+                $state = 'disabled'; // TODO: should we set a separate "panicked" state? The panic command is only sent just before terminating the server at the hoster, so "disabled" should be ok.
+                break;
             default:
                 $this->logger->error("Unknown Scalelite action '$action'. Can not change states.");
                 return false;
