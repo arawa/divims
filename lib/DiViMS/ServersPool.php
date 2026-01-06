@@ -195,6 +195,7 @@ class ServersPool
                 $servers[$domain]['custom_state'] = 'malfunctioning';
             }
 
+
             //Check SSL certificates expiration date
             $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
             $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
@@ -206,8 +207,9 @@ class ServersPool
                 $this->logger->warning("SSL certificate for server $domain is due for renewal.", $log_context);
             }
 
-            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
-                // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
+            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 360) {
+                // Mark server as unresponsive if it is offline in Scalelite and running since at least 6 minutes
+
                 $log_context = compact('domain', 'bbb_status', 'divims_state');
                 if ($v['server_type'] == 'bare metal') {
                     $this->logger->error("Unresponsive bare metal server $domain detected. Tag server as 'unresponsive'. MANUAL INTERVENTION REQUIRED !", $log_context);
@@ -812,6 +814,16 @@ class ServersPool
                         return false;
                     }
                     break;
+
+                case 'panic':
+                    $this->logger->info("Panic server in Scalelite", ['domain' => $domain, 'id' => $id]);
+                    if ($ssh->exec("$base_command servers:panic[$id,,true]", ['max_tries' => 3])) {
+                        return true;
+                    } else {
+                        $this->logger->error("Can not panic server $domain in Scalelite", ['domain' => $domain]);
+                        return false;
+                    }
+                    break;
             }
         }
 
@@ -835,6 +847,9 @@ class ServersPool
                 $state = 'enabled';
                 break;
             case 'disable':
+                $state = 'disabled';
+                break;
+            case 'panic':
                 $state = 'disabled';
                 break;
             default:
@@ -1944,7 +1959,7 @@ class ServersPool
                 continue;
             }
 
-            // Poweroff 'running' servers
+            // Terminate 'running' servers
             // check for remaining sessions or processing recordings
             if ($v['hoster_state'] == 'running') {
                 // Check if server is running since at least 3 controller runs
@@ -2115,8 +2130,13 @@ class ServersPool
                 $enable_success_list = $this->scaleliteActOnServersList(['action' => 'enable', 'domains' => $servers_to_enable]);
             }
 
-            // Poweroff virtual machines at hoster
+            // Terminate virtual machines at hoster
             if (!empty($virtual_machines_to_terminate)) {
+                $panic_success_list = $this->scaleliteActOnServersList(['action' => 'panic', 'domains' => array_keys($virtual_machines_to_terminate)]);
+                if (count($virtual_machines_to_terminate) != count($panic_success_list)) {
+                    $this->logger->warning('Some servers could not be put in panic mode');
+                }
+
                 $terminated_servers = $this->hosterActOnServersList(['action' => 'terminate', 'domains' => array_keys($virtual_machines_to_terminate)]);
 
                 $not_terminated_servers = array_diff(array_keys($virtual_machines_to_terminate), $terminated_servers);
@@ -2242,3 +2262,4 @@ class ServersPool
     }
 
 }
+
