@@ -155,6 +155,10 @@ class ServersPool
             $this->logger->warning("Servers in maintenance. Ignoring for adaptation.", ['maintenance_list' => implode(',', $servers_in_maintenance)]);
             foreach($servers_in_maintenance as $number) {
                 $domain = $this->getServerDomain($number);
+                if (! isset($servers[$domain])) {
+                    $this->logger->error("Inexistent server in maintenance list.", ['domain' => $domain]);
+                    continue;
+                }
                 $servers[$domain]['divims_state'] = 'in maintenance';
             }
         }
