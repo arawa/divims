@@ -14,7 +14,13 @@ $config = array(
   'scw_project_id' => '',
 
   // Log level used by the application
-  'log_level' => \Monolog\Logger::INFO,
+  'log_level' => \Monolog\Level::Info,
+
+  // SSL certifcate checks message delays (in number of days before expiration)
+  'ssl_certificate_validity_days_warning' => 14,
+  'ssl_certificate_validity_days_error' => 7,
+  'ssl_certificate_validity_days_alert' => 1,
+
 
   //Number of servers in the pool
   'pool_size' => 1,

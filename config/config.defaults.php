@@ -38,6 +38,11 @@ $config = [
     // This is to prevent errors that might occur after a long uptime
     'server_max_recycling_uptime' => 60*60*24*7,
 
+    // SSL certifcate checks message delays (in number of days before expiration)
+    'ssl_certificate_validity_days_warning' => 14,
+    'ssl_certificate_validity_days_error' => 7,
+    'ssl_certificate_validity_days_alert' => 1, // Wake up administrators
+
     // Adaptation from schedule
     'ical_cached_file_suffix' => '_adaptationCalendar',
 

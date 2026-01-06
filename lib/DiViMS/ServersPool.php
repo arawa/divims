@@ -195,6 +195,17 @@ class ServersPool
                 $servers[$domain]['custom_state'] = 'malfunctioning';
             }
 
+            //Check SSL certificates expiration date
+            $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
+            $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
+            if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_alert')) {
+                $this->logger->alert("SSL certificate for server $domain is due for renewal immediately.", $log_context);
+            } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_error')) {
+                $this->logger->error("SSL certificate for server $domain is due for renewal urgently.", $log_context);
+            } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_warning')) {
+                $this->logger->warning("SSL certificate for server $domain is due for renewal.", $log_context);
+            }
+
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 240) {
                 // Mark server as unresponsive if it is offline in Scalelite and running since at least 4 minutes
                 $log_context = compact('domain', 'bbb_status', 'divims_state');
@@ -657,7 +668,8 @@ class ServersPool
                     'bbb_status' => $values['bbb_status'],
                     'bbb_version' => $values['bbb_version'],
                     'trapline_check' => $values['trapline_check'],
-                    'failed_recording_processing' => $values['failed_recording_processing']
+                    'failed_recording_processing' => $values['failed_recording_processing'],
+                    'ssl_certificate_validity_days' => intval($values['ssl_certificate_validity_days'])
                 ];
                 //print "Worker " . $worker .  " finished batch " . $fetchCount . " for ID " . $i . " in ". ($time_post - $time_pre) . " seconds\n";
                 //echo "Domain treated : $domain\n";
