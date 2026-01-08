@@ -14,7 +14,20 @@ $config = array(
   'scw_project_id' => '',
 
   // Log level used by the application
-  'log_level' => \Monolog\Logger::INFO,
+  'log_level' => \Monolog\Level::Info,
+
+  // SSL certifcate checks message delays (in number of days before expiration)
+  //'ssl_certificate_validity_days_warning' => 15,
+  //'ssl_certificate_validity_days_alert' => 5,
+
+  //Mail adresses for sending logs
+  'log_mail_to' => '', // list of addresses separated by comma
+  'log_mail_from' => '', 
+
+  // Log mails frequency
+  //'log_mail_warning_frequency_minutes' => 24*60,
+  //'log_mail_error_frequency_minutes' => 8*60,
+  //'log_mail_critical_frequency_minutes' => 60,
 
   //Number of servers in the pool
   'pool_size' => 1,
