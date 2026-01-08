@@ -35,7 +35,8 @@ class ServersPool
      * Array of servers and metrics indexed by the Scalelite domain name of the server
      * @var array  'bbb-wX.example.com' => ['scalelite_state' -> '(enabled|disabled|cordoned)', 'scalelite_status' -> '(online|offline)',
      *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier', 'scalelite_tag'
-     *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4', 'external_ipv4', 'external_ipv6',
+     *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4',
+     *  'external_ipv4', 'external_ipv6', 'ssl_certificate_validity_days'
      *  'bbb_status' -> 'OK|KO', 'bbb_version'
      *  'trapline_check',
      *  'failed_recording_processing',
@@ -201,14 +202,16 @@ class ServersPool
 
 
             //Check SSL certificates expiration date
-            $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
-            $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
-            if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_alert')) {
-                $this->logger->alert("SSL certificate for server $domain is due for renewal immediately.", $log_context);
-            } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_error')) {
-                $this->logger->error("SSL certificate for server $domain is due for renewal urgently.", $log_context);
-            } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_warning')) {
-                $this->logger->warning("SSL certificate for server $domain is due for renewal.", $log_context);
+            if (! is_null($v['ssl_certificate_validity_days']) {
+                $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
+                $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
+                if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_alert')) {
+                    $this->logger->alert("SSL certificate for server $domain is due for renewal immediately.", $log_context);
+                } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_error')) {
+                    $this->logger->error("SSL certificate for server $domain is due for renewal urgently.", $log_context);
+                } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_warning')) {
+                    $this->logger->warning("SSL certificate for server $domain is due for renewal.", $log_context);
+                }
             }
 
             if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 360) {
@@ -675,7 +678,7 @@ class ServersPool
                     'bbb_version' => $values['bbb_version'],
                     'trapline_check' => $values['trapline_check'],
                     'failed_recording_processing' => $values['failed_recording_processing'],
-                    'ssl_certificate_validity_days' => intval($values['ssl_certificate_validity_days'])
+                    'ssl_certificate_validity_days' => ($values['ssl_certificate_validity_days']=='undefined' ? null : intval($values['ssl_certificate_validity_days']))
                 ];
                 //print "Worker " . $worker .  " finished batch " . $fetchCount . " for ID " . $i . " in ". ($time_post - $time_pre) . " seconds\n";
                 //echo "Domain treated : $domain\n";
