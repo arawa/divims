@@ -39,9 +39,8 @@ $config = [
     'server_max_recycling_uptime' => 60*60*24*7,
 
     // SSL certifcate checks message delays (in number of days before expiration)
-    'ssl_certificate_validity_days_warning' => 14,
-    'ssl_certificate_validity_days_error' => 7,
-    'ssl_certificate_validity_days_alert' => 1, // Wake up administrators
+    'ssl_certificate_validity_days_warning' => 15,
+    'ssl_certificate_validity_days_alert' => 5, // Wake up administrators
 
     // Delay between log mails
     'log_mail_warning_frequency_minutes' => 24*60,

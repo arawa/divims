@@ -200,15 +200,12 @@ class ServersPool
                 $servers[$domain]['custom_state'] = 'malfunctioning';
             }
 
-
             //Check SSL certificates expiration date
             if (! is_null($v['ssl_certificate_validity_days'])) {
                 $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
                 if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_alert')) {
                     $this->logger->alert("SSL certificate for server $domain is due for renewal immediately.", $log_context);
-                } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_error')) {
-                    $this->logger->error("SSL certificate for server $domain is due for renewal urgently.", $log_context);
                 } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_warning')) {
                     $this->logger->warning("SSL certificate for server $domain is due for renewal.", $log_context);
                 }
