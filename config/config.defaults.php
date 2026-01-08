@@ -43,6 +43,11 @@ $config = [
     'ssl_certificate_validity_days_error' => 7,
     'ssl_certificate_validity_days_alert' => 1, // Wake up administrators
 
+    // Delay between log mails
+    'log_mail_warning_frequency_minutes' => 24*60,
+    'log_mail_error_frequency_minutes' => 8*60,
+    'log_mail_critical_frequency_minutes' => 60,
+
     // Adaptation from schedule
     'ical_cached_file_suffix' => '_adaptationCalendar',
 

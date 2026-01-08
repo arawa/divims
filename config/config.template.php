@@ -21,7 +21,7 @@ $config = array(
   'ssl_certificate_validity_days_error' => 7,
   'ssl_certificate_validity_days_alert' => 1,
 
-  //Mail adresses form sening logs
+  //Mail adresses for sending logs
   'log_mail_to' => '', // list of addresses separated by comma
   'log_mail_from' => '', 
 

@@ -51,7 +51,6 @@ $options = getopt($short_options, $long_options);
 //$project = basename(dirname($_SERVER['PHP_SELF']));
 $project = $options['project'] ?? 'none';
 
-
 // Create a log channel
 $logger = new Logger($project);
 
@@ -66,7 +65,7 @@ $logger->pushHandler(new StreamHandler("$base_directory/log/$project.log", \Mono
 // Show logs on stdout
 $logger->pushHandler(new StreamHandler('php://stdout', $log_level));
 
-setDefaultLogEmailHandlers($logger, $config->get('log_mail_to'), $config->get('log_mail_from'), $project);
+setDefaultLogEmailHandlers($config, $logger, $project);
 
 // Start daemon
 $pool = new ServersPool($config, $logger);
