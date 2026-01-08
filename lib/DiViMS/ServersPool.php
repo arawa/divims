@@ -202,7 +202,7 @@ class ServersPool
 
 
             //Check SSL certificates expiration date
-            if (! is_null($v['ssl_certificate_validity_days']) {
+            if (! is_null($v['ssl_certificate_validity_days'])) {
                 $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
                 if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_alert')) {
