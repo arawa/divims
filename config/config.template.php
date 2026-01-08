@@ -21,6 +21,9 @@ $config = array(
   'ssl_certificate_validity_days_error' => 7,
   'ssl_certificate_validity_days_alert' => 1,
 
+  //Mail adresses form sening logs
+  'log_mail_to' => '', // list of addresses separated by comma
+  'log_mail_from' => '', 
 
   //Number of servers in the pool
   'pool_size' => 1,
