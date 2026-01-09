@@ -23,6 +23,7 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Handler\DeduplicationHandler;
 use Monolog\Handler\NativeMailerHandler;
 use Monolog\Handler\FilterHandler;
+use Monolog\Level;
 
 // https://github.com/confirm/PhpZabbixApi
 // https://www.zabbix.com/documentation/current/manual/api
@@ -57,11 +58,11 @@ $logger = new Logger($project);
 // Create config
 $config = new Config($project, $logger);
 
-$log_level = isset($options['log-level']) ? constant("\Monolog\Level::" . ucfirst(strtolower($options['log-level']))) : \Monolog\Level::Debug;
+$log_level = isset($options['log-level']) ? constant("\Monolog\Level::" . ucfirst(strtolower($options['log-level']))) : Level::Debug;
 
 $logger->setTimezone(new \DateTimeZone('Europe/Paris'));
 // Store info logs locally
-$logger->pushHandler(new StreamHandler("$base_directory/log/$project.log", \Monolog\Level::Info));
+$logger->pushHandler(new StreamHandler("$base_directory/log/$project.log", Level::Info));
 // Show logs on stdout
 $logger->pushHandler(new StreamHandler('php://stdout', $log_level));
 
