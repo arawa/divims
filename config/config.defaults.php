@@ -9,12 +9,15 @@ $config = [
     // Max number of parallel processes to clone servers
     'clone_max_workers' => 5,
     // Whether to use routed or natted IP (NAT used to be the default at Scaleway)
-    'clone_enable_routed_ip' => false,
+    'clone_enable_routed_ip' => true,
     // SSH commands timeout in seconds
     'ssh_timeout' => 10,
     'hoster_api' => 'SCW',
     // Bare-metal servers
     'bare_metal_servers_count' => 0,
+
+    // Log level used by the application
+    'log_level' => \Monolog\Level::Info,
 
     /*
      * Capacity adaptation
@@ -25,9 +28,9 @@ $config = [
     // Number of minutes between two controller cron runs
     'controller_run_frequency' => 5,
     // Duration in minutes above which meetings will be forcibly ended
-    'meetings_max_duration' => 600,
+    'meetings_max_duration_minutes' => 600,
     // Duration in minutes above which send a warning for recording still processing
-    'recordings_max_processing_duration' => 300,
+    'recordings_max_processing_duration_minutes' => 300,
     // Paths used to check if recordings transfers succeeded
     'recordings_path_source' => '/var/bigbluebutton/published/presentation',
     'recordings_path_target' => '/mnt/scalelite-recordings/var/bigbluebutton/published/presentation',
@@ -36,16 +39,20 @@ $config = [
 
     // Max uptime in seconds above which a server is forcibly recycled
     // This is to prevent errors that might occur after a long uptime
-    'server_max_recycling_uptime' => 60*60*24*7,
+    'server_max_recycling_uptime_seconds' => 60*60*24*7,
 
     // SSL certifcate checks message delays (in number of days before expiration)
-    'ssl_certificate_validity_days_warning' => 15,
-    'ssl_certificate_validity_days_alert' => 5, // Wake up administrators
+    'ssl_certificate_validity_warning_days' => 15,
+    'ssl_certificate_validity_alert_days' => 5, // Wake up administrators
 
     // Delay between log mails
     'log_mail_warning_frequency_minutes' => 24*60,
     'log_mail_error_frequency_minutes' => 8*60,
     'log_mail_critical_frequency_minutes' => 60,
+
+    //Mail addresses for sending logs
+    'log_mail_to' => NULL, // A single address as a string or an array of addresses
+    'log_mail_from' => NULL, // A single address
 
     // Adaptation from schedule
     'ical_cached_file_suffix' => '_adaptationCalendar',

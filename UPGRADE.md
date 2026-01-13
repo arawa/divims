@@ -38,3 +38,11 @@ use \Monolog\Level;
 ```
 
 - And replace deprecated constants of the form `Logger::INFO` with the new ones like `Level::Info`
+
+- Add the following configuration parameters to `config/project/<project_name>/config.php`
+
+```php
+  //Mail adresses for sending logs
+  'log_mail_to' => '', // A single address as a string or an array of addresses
+  'log_mail_from' => '', // A single address
+```

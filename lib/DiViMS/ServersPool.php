@@ -41,7 +41,7 @@ class ServersPool
      *  'trapline_check',
      *  'failed_recording_processing',
      *  'hoster_id', 'hoster_state' -> (running|stopped|stopped in place|starting|stopping|locked|unreachable),
-     *  'hoster_state_duration', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
+     *  'hoster_state_duration_seconds', 'hoster_maintenances','hoster_public_ip', 'hoster_private_ip',
      *  'divims_state' -> '(active|in maintenance)'
      *  'custom_state' -> 'unresponsive|to recycle|malfunctioning|null'
      *  'server_type' -> 'virtual machine|bare metal'
@@ -181,10 +181,10 @@ class ServersPool
             // Mark nonexistent servers
             if  (!isset($v['hoster_state'])) $servers[$domain]['hoster_state'] = 'nonexistent';
 
-            // Set 'hoster_state_duration for running bare metal servers
+            // Set 'hoster_state_duration_seconds for running bare metal servers
             if ($v['server_type'] == 'bare metal' and $v['hoster_state'] == 'running') {
-                $v['hoster_state_duration'] = round($v['uptime'] / 60);
-                $servers[$domain]['hoster_state_duration'] = $v['hoster_state_duration'];
+                $v['hoster_state_duration_seconds'] = round($v['uptime'] / 60);
+                $servers[$domain]['hoster_state_duration_seconds'] = $v['hoster_state_duration_seconds'];
             }
 
             // Tag servers that need to be replaced
@@ -201,17 +201,17 @@ class ServersPool
             }
 
             //Check SSL certificates expiration date
-            if (! is_null($v['ssl_certificate_validity_days'])) {
+            if (! is_null($v['ssl_certificate_validity_days']) and $v['uptime'] >= 60*6) {
                 $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
-                if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_alert')) {
+                if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_alert_days')) {
                     $this->logger->alert("SSL certificate for server $domain is due for renewal immediately.", $log_context);
-                } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_days_warning')) {
+                } elseif ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_warning_days')) {
                     $this->logger->warning("SSL certificate for server $domain is due for renewal.", $log_context);
                 }
             }
 
-            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration'] >= 360) {
+            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration_seconds'] >= 360) {
                 // Mark server as unresponsive if it is offline in Scalelite and running since at least 6 minutes
 
                 $log_context = compact('domain', 'bbb_status', 'divims_state');
@@ -221,7 +221,7 @@ class ServersPool
                     $this->logger->error("Unresponsive virtual machine server $domain detected. Tag server as 'unresponsive'. Server will be powered off unless it is in maintenance.",  $log_context);
                 }
                 $servers[$domain]['custom_state'] = 'unresponsive';
-            } elseif ($v['hoster_state'] == 'running' and ($bbb_status == 'KO' or $trapline_check == 'KO') and $v['hoster_state_duration'] >= 120) {
+            } elseif ($v['hoster_state'] == 'running' and ($bbb_status == 'KO' or $trapline_check == 'KO') and $v['hoster_state_duration_seconds'] >= 120) {
                 // Also tag server as 'malfunctioning' when BBB malfunctions
                 $log_context = compact('domain', 'scalelite_status', 'bbb_status', 'trapline_check', 'divims_state');
                 if ($v['server_type'] == 'bare metal') {
@@ -230,15 +230,15 @@ class ServersPool
                     $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'malfunctioning'.  Server will be powered off unless it is in maintenance.", $log_context);
                 }
                 $servers[$domain]['custom_state'] = 'malfunctioning';
-            } elseif ($v['uptime'] >= $this->config->get('server_max_recycling_uptime')) {
+            } elseif ($v['uptime'] >= $this->config->get('server_max_recycling_uptime_seconds')) {
                 // Alternatively check if server should be recycled due to long uptime
                 $servers[$domain]['custom_state'] = 'to recycle';
 
-                $server_max_recycling_uptime = $this->convertSecToTime($this->config->get('server_max_recycling_uptime'));
+                $server_max_recycling_uptime = $this->convertSecToTime($this->config->get('server_max_recycling_uptime_seconds'));
                 $uptime = $this->convertSecToTime($v['uptime']);
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');    
-                if ($v['uptime'] >= ($this->config->get('server_max_recycling_uptime') + 60 * 60 * 7)) {
-                    // Log an error if uptime exceeds by more than 7 hours 'server_max_recycling_uptime'
+                if ($v['uptime'] >= ($this->config->get('server_max_recycling_uptime_seconds') + 60 * 60 * 7)) {
+                    // Log an error if uptime exceeds by more than 7 hours 'server_max_recycling_uptime_seconds'
                     if ($v['server_type'] == 'bare metal') {
                         $this->logger->error("Uptime far above limit for bare metal server $domain detected. Manual check required.", $log_context);
                     } else {
@@ -767,7 +767,7 @@ class ServersPool
                         $server_data[$domain] = [
                             'hoster_id' => $server['id'],
                             'hoster_state' => $server['state'],
-                            'hoster_state_duration' => $hoster_state_duration,
+                            'hoster_state_duration_seconds' => $hoster_state_duration,
                             'hoster_maintenances' => $server['maintenances'],
                             'hoster_public_ip' => $server['public_ip']['address'],
                             'hoster_private_ip' => $server['private_ip'],
@@ -1886,7 +1886,7 @@ class ServersPool
                 $running_disabled_servers = array_merge($this->getList(['hoster_state' => 'running', 'scalelite_state' => 'cordoned']), $this->getList(['hoster_state' => 'running', 'scalelite_state' => 'disabled']));
                 $starting_enabled_servers = $this->getList(['hoster_state' => 'starting', 'scalelite_state' => 'enabled']);
                 uasort($starting_enabled_servers, function ($a, $b) {
-                    return $a['hoster_state_duration'] <=> $b['hoster_state_duration'];
+                    return $a['hoster_state_duration_seconds'] <=> $b['hoster_state_duration_seconds'];
                 });
                 $servers_to_switch_count = min(count($running_disabled_servers), count($starting_enabled_servers));
                 $servers_to_cordon = [];
@@ -1928,7 +1928,7 @@ class ServersPool
             $scalelite_state = $v['scalelite_state']; // cordoned or disabled
             $bbb_status = $v['bbb_status'];
             $server_type = $v['server_type'];
-            $hoster_state_duration_minutes = round($v['hoster_state_duration']/60);
+            $hoster_state_duration_minutes = round($v['hoster_state_duration_seconds']/60);
 
             // Skip non existent servers
             if ($hoster_state == 'nonexistent') {
@@ -1999,14 +1999,14 @@ class ServersPool
                         $this->logger->info("Still remaining meetings. Can not poweroff", ['domain' => $domain]);
 
                         // Check if server has meetings that should be forcibly ended due to max duration reached
-                        $meetings_max_duration = $this->config->get('meetings_max_duration');
-                        $this->logger->debug("Checking for meetings older than $meetings_max_duration to forcibly end");
+                        $meetings_max_duration_minutes = $this->config->get('meetings_max_duration_minutes');
+                        $this->logger->debug("Checking for meetings older than $meetings_max_duration_minutes minutes to forcibly end");
                         foreach($result->getRawXml()->meetings->meeting as $meeting) {
                             // Compute creation date in seconds from create time in epoch with milliseconds
                             $creation_time = round($meeting->createTime/1000);
                             $now = time();
                             $meeting_duration_minutes = round(($now - $creation_time)/60); // Meeting duration in minutes
-                            if ($meeting_duration_minutes >= $meetings_max_duration) {
+                            if ($meeting_duration_minutes >= $meetings_max_duration_minutes) {
                                 $meeting_id = (string) $meeting->meetingID;
                                 $meeting_name = (string) $meeting->meetingName;
                                 $meeting_password = (string) $meeting->moderatorPW;
@@ -2040,14 +2040,14 @@ class ServersPool
                         $this->logger->info("Server has recordings in 'processing' or 'processed' state. Can not terminate", ['domain' => $domain]);
 
                         // Check if server has recordings that reached max processing duration
-                        $recordings_max_processing_duration = $this->config->get('recordings_max_processing_duration');
-                        $this->logger->debug("Checking for recordings processing longer than $recordings_max_processing_duration");
+                        $recordings_max_processing_duration_minutes = $this->config->get('recordings_max_processing_duration_minutes');
+                        $this->logger->debug("Checking for recordings processing longer than $recordings_max_processing_duration_minutes minutes");
                         foreach($result->getRawXml()->recordings->recording as $recording) {
                             // Compute meeting end date in seconds from create time in epoch with milliseconds
                             $creation_time = round($recording->endTime/1000);
                             $now = time();
                             $processing_duration_minutes = round(($now - $creation_time)/60); // Meeting duration in minutes
-                            if ($processing_duration_minutes >= $recordings_max_processing_duration) {
+                            if ($processing_duration_minutes >= $recordings_max_processing_duration_minutes) {
                                 $recording_id = (string) $recording->recordID;
                                 $recording_state = (string) $recording->state;
                                 $meeting_id = (string) $recording->meetingID;
@@ -2167,9 +2167,9 @@ class ServersPool
                 $this->logger->info("Add $hoster_state and enabled in Scalelite server to poweron list.", ['domain' => $domain]);
                 $servers_ready_for_poweron[] = $domain;
             } elseif (in_array($hoster_state, ['starting'])) {
-                $this->logger->info("Server is already starting and enabled in Scalelite.", ['domain' => $domain, 'start_duration_minutes' => round($v['hoster_state_duration']/60)]);
+                $this->logger->info("Server is already starting and enabled in Scalelite.", ['domain' => $domain, 'start_duration_minutes' => round($v['hoster_state_duration_seconds']/60)]);
             } elseif (in_array($hoster_state, ['stopping'])) {
-                $this->logger->info("Server is stopping and enabled in Scalelite. Not powering on now.", ['domain' => $domain,  'stop_duration_minutes' => round($v['hoster_state_duration']/60)]);
+                $this->logger->info("Server is stopping and enabled in Scalelite. Not powering on now.", ['domain' => $domain,  'stop_duration_minutes' => round($v['hoster_state_duration_seconds']/60)]);
             } elseif ($hoster_state == 'running' and $scalelite_status == 'offline') {
                 $this->logger->info("Server is already running and enabled in Scalelite but not yet online in Scalelite.", ['domain' => $domain]);
             }

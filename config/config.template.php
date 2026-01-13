@@ -1,6 +1,6 @@
 <?php
 
-$config = array(
+$config = [
   // OVH credentials, validity: unlimited, permissions : GET,POST,PUT,DELETE /domain/zone/{dns-zone}/*
   'ovh_application_key' => '',
   'ovh_application_secret' => '',
@@ -17,12 +17,12 @@ $config = array(
   'log_level' => \Monolog\Level::Info,
 
   // SSL certifcate checks message delays (in number of days before expiration)
-  //'ssl_certificate_validity_days_warning' => 15,
-  //'ssl_certificate_validity_days_alert' => 5,
+  //'ssl_certificate_validity_warning_days' => 15,
+  //'ssl_certificate_validity_alert_days' => 5,
 
   //Mail adresses for sending logs
-  'log_mail_to' => '', // list of addresses separated by comma
-  'log_mail_from' => '', 
+  'log_mail_to' => '', // A single address as a string or an array of addresses
+  'log_mail_from' => '', // A single address
 
   // Log mails frequency
   //'log_mail_warning_frequency_minutes' => 24*60,
@@ -111,6 +111,6 @@ $config = array(
   'ical_stream' => '',
   // Default ICS file in case stream is unavailable. Located in project directory.
   //'ical_default_file' => '',
-);
+];
 
 ?>
