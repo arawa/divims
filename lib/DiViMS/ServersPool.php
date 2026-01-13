@@ -762,12 +762,12 @@ class ServersPool
                         // Compute state duration in seconds from modification date
                         $modification_date = \DateTime::createFromFormat("Y-m-d\TH:i:s.uP", $server['modification_date']);
                         $now = new \DateTime('NOW');
-                        $hoster_state_duration = $now->getTimestamp() - $modification_date->getTimestamp();
+                        $hoster_state_duration_seconds = $now->getTimestamp() - $modification_date->getTimestamp();
 
                         $server_data[$domain] = [
                             'hoster_id' => $server['id'],
                             'hoster_state' => $server['state'],
-                            'hoster_state_duration_seconds' => $hoster_state_duration,
+                            'hoster_state_duration_seconds' => $hoster_state_duration_seconds,
                             'hoster_maintenances' => $server['maintenances'],
                             'hoster_public_ip' => $server['public_ip']['address'],
                             'hoster_private_ip' => $server['private_ip'],
