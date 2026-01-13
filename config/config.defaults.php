@@ -41,6 +41,10 @@ $config = [
     // This is to prevent errors that might occur after a long uptime
     'server_max_recycling_uptime_seconds' => 60*60*24*7,
 
+    // Minimum duration above which a server is considered fully functional
+    // (server uptime or hoster running duration)
+    'server_min_available_uptime_seconds' => 60*6,
+
     // SSL certifcate checks message delays (in number of days before expiration)
     'ssl_certificate_validity_warning_days' => 15,
     'ssl_certificate_validity_alert_days' => 5, // Wake up administrators

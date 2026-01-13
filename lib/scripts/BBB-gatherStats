@@ -7,7 +7,7 @@
 echo "load_averages="$(cat /proc/loadavg)
 
 ## retrieve uptime in seconds
-echo "uptime="$(cut -d' ' -f1 /proc/uptime)
+echo "uptime_seconds="$(cut -d' ' -f1 /proc/uptime)
 
 ## Retrieve number of cpus
 echo "cpu_count="$(cat /proc/cpuinfo | grep  '^processor' | wc -l)
@@ -88,4 +88,8 @@ echo "failed_recording_processing=$failed_recording_processing"
 # - https://stackoverflow.com/questions/66920940/parsing-the-date-to-calculate-days-until-cert-expiry-from-a-shell-script
 #
 bbb_hostname=$(grep -m1 -Poe 'server_name \K[^; ]+' /etc/nginx/sites-enabled/bigbluebutton)
-echo "ssl_certificate_validity_days=$(( ($(date -d "$(curl --connect-timeout 2 --max-time 2 -vkI https://$bbb_hostname --stderr - | grep "expire date" | cut -d":" -f 2-)" '+%s') - $(date '+%s')) / 86400 ))"
+if curl_result="$(curl --connect-timeout 2 --max-time 2 -vkI https://$bbb_hostname --stderr -)"; then
+  echo "ssl_certificate_validity_days=$(( ($(date -d "$(printf %s "$curl_result" | grep "expire date" | head -n 1 | cut -d":" -f 2-)" '+%s') - $(date '+%s')) / 86400 ))"
+else
+  echo "ssl_certificate_validity_days=undefined"
+fi

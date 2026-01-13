@@ -35,7 +35,7 @@ class ServersPool
      * Array of servers and metrics indexed by the Scalelite domain name of the server
      * @var array  'bbb-wX.example.com' => ['scalelite_state' -> '(enabled|disabled|cordoned)', 'scalelite_status' -> '(online|offline)',
      *  'meetings', 'users', 'largest_meeting', 'videos', 'scalelite_id', 'secret', 'scalelite_load', load_multiplier', 'scalelite_tag'
-     *  'cpus', 'uptime', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4',
+     *  'cpus', 'uptime_seconds', 'loadavg1', 'loadavg5', 'loadavg15', 'rxavg1', 'txavg1', 'internal_ipv4',
      *  'external_ipv4', 'external_ipv6', 'ssl_certificate_validity_days'
      *  'bbb_status' -> 'OK|KO', 'bbb_version'
      *  'trapline_check',
@@ -168,7 +168,7 @@ class ServersPool
 
 
             // If uptime is undefined, set a  negative value
-            $servers[$domain]['uptime'] = $v['uptime'] ?? -1;
+            $servers[$domain]['uptime_seconds'] = $v['uptime_seconds'] ?? -1;
             if (($v['divims_state'] ?? '') != 'in maintenance') {
                 $servers[$domain]['divims_state'] = 'active';
             }
@@ -183,7 +183,7 @@ class ServersPool
 
             // Set 'hoster_state_duration_seconds for running bare metal servers
             if ($v['server_type'] == 'bare metal' and $v['hoster_state'] == 'running') {
-                $v['hoster_state_duration_seconds'] = round($v['uptime'] / 60);
+                $v['hoster_state_duration_seconds'] = round($v['uptime_seconds'] / 60);
                 $servers[$domain]['hoster_state_duration_seconds'] = $v['hoster_state_duration_seconds'];
             }
 
@@ -201,7 +201,7 @@ class ServersPool
             }
 
             //Check SSL certificates expiration date
-            if (! is_null($v['ssl_certificate_validity_days']) and $v['uptime'] >= 60*6) {
+            if (! is_null($v['ssl_certificate_validity_days']) and $v['uptime_seconds'] >= $this->config->get('server_min_available_uptime_seconds')) {
                 $ssl_certificate_validity_days = $v['ssl_certificate_validity_days'];
                 $log_context = compact('domain', 'bbb_status', 'divims_state', 'ssl_certificate_validity_days');
                 if ($ssl_certificate_validity_days <= $this->config->get('ssl_certificate_validity_alert_days')) {
@@ -211,7 +211,7 @@ class ServersPool
                 }
             }
 
-            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration_seconds'] >= 360) {
+            if ($v['hoster_state'] == 'running' and $v['scalelite_status'] == 'offline' and $v['hoster_state_duration_seconds'] >= $this->config->get('server_min_available_uptime_seconds')) {
                 // Mark server as unresponsive if it is offline in Scalelite and running since at least 6 minutes
 
                 $log_context = compact('domain', 'bbb_status', 'divims_state');
@@ -230,14 +230,14 @@ class ServersPool
                     $this->logger->error("BBB malfunction detected for virtual machine server $domain. Tag server as 'malfunctioning'.  Server will be powered off unless it is in maintenance.", $log_context);
                 }
                 $servers[$domain]['custom_state'] = 'malfunctioning';
-            } elseif ($v['uptime'] >= $this->config->get('server_max_recycling_uptime_seconds')) {
+            } elseif ($v['uptime_seconds'] >= $this->config->get('server_max_recycling_uptime_seconds')) {
                 // Alternatively check if server should be recycled due to long uptime
                 $servers[$domain]['custom_state'] = 'to recycle';
 
                 $server_max_recycling_uptime = $this->convertSecToTime($this->config->get('server_max_recycling_uptime_seconds'));
-                $uptime = $this->convertSecToTime($v['uptime']);
-                $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');    
-                if ($v['uptime'] >= ($this->config->get('server_max_recycling_uptime_seconds') + 60 * 60 * 7)) {
+                $uptime_seconds = $this->convertSecToTime($v['uptime_seconds']);
+                $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime_seconds');
+                if ($v['uptime_seconds'] >= ($this->config->get('server_max_recycling_uptime_seconds') + 60 * 60 * 7)) {
                     // Log an error if uptime exceeds by more than 7 hours 'server_max_recycling_uptime_seconds'
                     if ($v['server_type'] == 'bare metal') {
                         $this->logger->error("Uptime far above limit for bare metal server $domain detected. Manual check required.", $log_context);
@@ -661,7 +661,7 @@ class ServersPool
                 //var_dump($cpus);
 
                 $more_data[$i] = [
-                    'uptime' => intval($values['uptime']),
+                    'uptime_seconds' => intval($values['uptime_seconds']),
                     'cpus' => $cpus,
                     'loadavg1' => floatval($load[0]) / $cpus * 100,
                     'loadavg5' => floatval($load[1]) / $cpus * 100,
