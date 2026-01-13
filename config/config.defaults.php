@@ -8,8 +8,7 @@ $config = [
     'poll_max_workers' => 100,
     // Max number of parallel processes to clone servers
     'clone_max_workers' => 5,
-    // Whether to use routed or natted IP (NAT used to be the default at Scaleway)
-    'clone_enable_routed_ip' => true,
+
     // SSH commands timeout in seconds
     'ssh_timeout' => 10,
     'hoster_api' => 'SCW',
