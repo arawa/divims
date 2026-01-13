@@ -235,8 +235,8 @@ class ServersPool
                 $servers[$domain]['custom_state'] = 'to recycle';
 
                 $server_max_recycling_uptime = $this->convertSecToTime($this->config->get('server_max_recycling_uptime_seconds'));
-                $uptime_seconds = $this->convertSecToTime($v['uptime_seconds']);
-                $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime_seconds');
+                $uptime = $this->convertSecToTime($v['uptime_seconds']);
+                $log_context = compact('domain', 'bbb_status', 'divims_state', 'server_max_recycling_uptime', 'uptime');
                 if ($v['uptime_seconds'] >= ($this->config->get('server_max_recycling_uptime_seconds') + 60 * 60 * 7)) {
                     // Log an error if uptime exceeds by more than 7 hours 'server_max_recycling_uptime_seconds'
                     if ($v['server_type'] == 'bare metal') {
