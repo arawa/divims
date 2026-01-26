@@ -152,7 +152,15 @@ class ServersPool
         }
 
         $servers_in_maintenance = json_decode(file_get_contents($maintenance_file), true);
+
         if (!empty($servers_in_maintenance)) {
+            // Discriminate between two json file forms
+            // Original : [42,43]
+            // Advanced, with comments: { "42": "Comment", "43": "Comment" }
+            if (! is_int(current($servers_in_maintenance))) {
+                $servers_in_maintenance = array_map('intval', array_keys($servers_in_maintenance));
+            }
+
             $this->logger->warning("Servers in maintenance. Ignoring for adaptation.", ['maintenance_list' => implode(',', $servers_in_maintenance)]);
             foreach($servers_in_maintenance as $number) {
                 $domain = $this->getServerDomain($number);
