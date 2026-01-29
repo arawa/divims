@@ -501,13 +501,13 @@ class ServersPool
             $table = explode(PHP_EOL, $table);
             //var_dump($table);
 
-            //Parse data
-            $data = array();
-
             // Strip empty starting lines
-            while (current($data) == '') {
-                array_shift($data);
+            while (! empty($table) and $table[0] == '') {
+                array_shift($table);
             }
+
+            //Parse data
+            $data = [];
 
             $entries = count($table) - 1;
             
