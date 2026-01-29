@@ -607,7 +607,7 @@ class ServersPool
         }
         //var_dump($data);
 
-        $this->logger->debug("Returned Scalelite status and servers data", ['data' => var_export($data, true)]);
+        $this->logger->debug("Returned Scalelite status and servers data", ['data' => json_encode($data, JSON_PRETTY_PRINT)]);
 
         return $data;
     }
@@ -791,7 +791,7 @@ class ServersPool
                         ];
                     }
 
-                    $this->logger->debug("Returned hoster data", ['server_data' => var_export($server_data, true)]);
+                    $this->logger->debug("Returned hoster data", ['server_data' => json_encode($server_data, JSON_PRETTY_PRINT)]);
 
                     return $server_data;
                 }
