@@ -501,8 +501,14 @@ class ServersPool
             $table = explode(PHP_EOL, $table);
             //var_dump($table);
 
+            // Strip empty starting lines
+            while (! empty($table) and $table[0] == '') {
+                array_shift($table);
+            }
+
             //Parse data
-            $data = array();
+            $data = [];
+
             $entries = count($table) - 1;
             
             if ($entries != $this->config->get('pool_size')) {
@@ -600,6 +606,8 @@ class ServersPool
             );
         }
         //var_dump($data);
+
+        $this->logger->debug("Returned Scalelite status and servers data", ['data' => json_encode($data)]);
 
         return $data;
     }
@@ -782,6 +790,9 @@ class ServersPool
                             'server_type' => 'virtual machine',
                         ];
                     }
+
+                    $this->logger->debug("Returned hoster data", ['server_data' => json_encode($server_data)]);
+
                     return $server_data;
                 }
                 if ($try_count == $max_tries) break;
