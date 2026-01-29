@@ -503,6 +503,12 @@ class ServersPool
 
             //Parse data
             $data = array();
+
+            // Strip empty starting lines
+            while (current($data) == '') {
+                array_shift($data);
+            }
+
             $entries = count($table) - 1;
             
             if ($entries != $this->config->get('pool_size')) {
