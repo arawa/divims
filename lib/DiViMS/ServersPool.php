@@ -607,6 +607,8 @@ class ServersPool
         }
         //var_dump($data);
 
+        $this->logger->debug("Returned Scalelite status and servers data", ['data' => var_export($data, true)]);
+
         return $data;
     }
 
@@ -788,6 +790,9 @@ class ServersPool
                             'server_type' => 'virtual machine',
                         ];
                     }
+
+                    $this->logger->debug("Returned hoster data", ['server_data' => var_export($server_data, true)]);
+
                     return $server_data;
                 }
                 if ($try_count == $max_tries) break;
