@@ -891,7 +891,7 @@ class ServersPool
         $min_id = 0;
         $max_id = count($domains);
 
-        list($batch_size, $workers) = $this->getParallelParameters($min_id, $max_id, 5);
+        list($batch_size, $workers) = $this->getParallelParameters($min_id, $max_id, $this->config->get('scalelite_action_max_workers'));
 
         //Standalone function to be executed in a parallel thread
         //Receives all parameters : can not access global variables

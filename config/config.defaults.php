@@ -8,6 +8,8 @@ $config = [
     'poll_max_workers' => 100,
     // Max number of parallel processes to clone servers
     'clone_max_workers' => 5,
+    // Max number of parallel processes to act on Scalelite
+    'scalelite_action_max_workers' => 5,
 
     // SSH commands timeout in seconds
     'ssh_timeout' => 10,
