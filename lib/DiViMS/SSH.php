@@ -70,6 +70,7 @@ Class SSH {
         while (true)
         {
             $count++;
+            $output = [];
             exec("timeout $timeout ". $this->base_ssh_command . " $command $stderr", $output, $return_value);
             $this->logger->debug("Executing SSH command", ['command' => $this->base_ssh_command . " $command $stderr", "return_val" => $return_value, "try" => $count]);
             $this->output = implode("\n", $output);
